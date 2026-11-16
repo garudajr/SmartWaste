@@ -11,6 +11,7 @@ Model AI berjalan langsung di browser (TensorFlow.js + Teachable Machine), tanpa
 - Kartu edukasi otomatis: penjelasan + langkah penanganan + warna tempat sampah
 - Ambang keyakinan (70%): hasil ragu diganti tips foto yang lebih baik
 - Riwayat scan dan jumlah Organik/Anorganik (disimpan di perangkat)
+- Sistem Eco Points: +10 poin tiap scan berhasil, papan skor + progress bar di layar scan, dan pop-up konfeti saat naik level
 - Mode gelap/terang, responsif untuk HP
 
 ## Langkah 1 – Latih model di Teachable Machine
@@ -51,6 +52,21 @@ python3 -m http.server 8000
 ```
 
 Lalu buka <http://localhost:8000>.
+
+## Poin & level
+| Level | Poin | Tercapai setelah |
+|-------|------|------------------|
+| 🌰 Pemula | 0 - 90 | (fase perkenalan) |
+| 🌱 Beginner | 100 - 240 | 10x scan |
+| 🤝 Friend | 250 - 490 | 25x scan |
+| 🦸‍♂️ Hero | 500 - 990 | 50x scan |
+| 🌍 Earth Guardian | 1000+ | 100x scan |
+
+- Poin hanya diberikan untuk hasil Organik/Anorganik yang yakin (di atas ambang keyakinan).
+- Satu foto hanya dihitung sekali. Menekan "Analisis" berulang pada foto yang sama tidak menambah poin; harus foto atau scan baru.
+- Poin disimpan di browser masing-masing perangkat (localStorage), jadi tidak ada papan peringkat bersama dan poin tidak berpindah antar HP.
+- Mengubah batas level atau poin per scan: `LEVELS` dan `POINTS_PER_SCAN` di bagian atas `script.js`.
+- Di mode demo (belum ada model), poin tetap bertambah supaya animasi naik level bisa dicoba. Tombol **Reset poin & level** ada di bagian Level.
 
 ## Mengubah isi
 - Teks edukasi dan warna tempat sampah: objek `INFO` di `script.js`.

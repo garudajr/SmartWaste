@@ -8,12 +8,24 @@
    2. Klik Export Model > Upload (shareable link) > salin link-nya.
    3. Tempel di MODEL_URL di bawah (harus diakhiri tanda "/").
    ===================================================================== */
-const MODEL_URL = "https://teachablemachine.withgoogle.com/models/oYXRr1aM2/";
+const MODEL_URL = "https://teachablemachine.withgoogle.com/models/GANTI_DENGAN_ID_MODELMU/";
 const CONFIDENCE_THRESHOLD = 0.70; // di bawah ini hasil dianggap "kurang yakin"
 const MIN_SCAN_MS = 900;           // lama minimal animasi scan
 const MAX_HISTORY = 100;
 const HISTORY_KEY = "pilahpintar_riwayat";
 const THEME_KEY = "pilahpintar_tema";
+const POINTS_KEY = "pilahpintar_poin";
+const POINTS_PER_SCAN = 10;     // poin tiap scan sampah yang berhasil dikenali
+const LEVELUP_DELAY_MS = 1600;  // jeda sebelum pop-up naik level muncul
+
+/* Tangga level (ubah batas poin di sini) */
+const LEVELS = [
+  { nama: "Pemula",         ikon: "🌰",  min: 0,    pesan: "Selamat datang! Mulai scan sampah untuk mengumpulkan Eco Points." },
+  { nama: "Beginner",       ikon: "🌱",  min: 100,  pesan: "Langkah pertamamu menjaga sekolah tetap bersih sudah dimulai!" },
+  { nama: "Friend",         ikon: "🤝",  min: 250,  pesan: "Kamu jadi sahabat lingkungan. Teruskan kebiasaan baikmu!" },
+  { nama: "Hero",           ikon: "🦸‍♂️", min: 500,  pesan: "Kamu pahlawan kebersihan sekolah. Ajak temanmu ikut memilah sampah!" },
+  { nama: "Earth Guardian", ikon: "🌍",  min: 1000, pesan: "Gelar tertinggi! Kamu benar-benar penjaga bumi." }
+];
 
 const DEMO = MODEL_URL.includes("GANTI_DENGAN");
 
@@ -89,7 +101,12 @@ const el = {
   eduCard: $("eduCard"), eduIcon: $("eduIcon"), eduTitle: $("eduTitle"), eduDesc: $("eduDesc"),
   eduSteps: $("eduSteps"), eduBin: $("eduBin"), eduNote: $("eduNote"),
   historyList: $("historyList"), historyEmpty: $("historyEmpty"), btnClearHistory: $("btnClearHistory"),
-  countOrganik: $("countOrganik"), countAnorganik: $("countAnorganik")
+  countOrganik: $("countOrganik"), countAnorganik: $("countAnorganik"),
+  hud: $("hud"), hudPoints: $("hudPoints"), hudLevel: $("hudLevel"), hudBar: $("hudBar"),
+  hudFill: $("hudFill"), hudNext: $("hudNext"), pointsGain: $("pointsGain"),
+  levelList: $("levelList"), btnResetPoints: $("btnResetPoints"),
+  levelModal: $("levelModal"), levelEmoji: $("levelEmoji"), levelTitle: $("levelTitle"),
+  levelDesc: $("levelDesc"), btnLevelClose: $("btnLevelClose"), confetti: $("confetti")
 };
 
 let model = null;
@@ -99,6 +116,10 @@ let facing = "environment";
 let mode = "idle"; // "idle" | "camera" | "image"
 let busy = false;
 let liveTimer = null;
+let points = 0;         // total Eco Points
+let imageId = 0;        // naik tiap ada foto baru (kamera/upload)
+let lastAwardedId = 0;  // foto terakhir yang sudah dapat poin
+let lastFocus = null;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -200,6 +221,7 @@ function setLoading(on) {
 }
 
 function hideResult() {
+  el.pointsGain.hidden = true;
   el.result.hidden = true;
   el.confBar.style.width = "0";
 }
@@ -297,7 +319,7 @@ function loadImageFile(file) {
   if (el.preview.dataset.objectUrl) URL.revokeObjectURL(el.preview.dataset.objectUrl);
   const url = URL.createObjectURL(file);
   el.preview.dataset.objectUrl = url;
-  el.preview.onload = () => { setMode("image"); scrollToScanner(); };
+  el.preview.onload = () => { imageId++; setMode("image"); scrollToScanner(); };
   el.preview.src = url;
 }
 
@@ -336,6 +358,7 @@ async function analyze() {
       c.width = el.video.videoWidth || 640;
       c.height = el.video.videoHeight || 480;
       c.getContext("2d").drawImage(el.video, 0, 0, c.width, c.height);
+      imageId++;
       el.preview.onload = null;
       el.preview.src = c.toDataURL("image/jpeg", 0.92);
       stopCamera();
@@ -351,6 +374,7 @@ async function analyze() {
 
     renderResult(hasil);
     saveHistory(hasil);
+    handleScore(hasil);
   } catch (err) {
     console.error(err);
     showNotice("Gagal menganalisis gambar. Pastikan MODEL_URL benar dan koneksi internet aktif, lalu coba lagi.");
@@ -469,6 +493,152 @@ el.btnClearHistory.addEventListener("click", () => {
 });
 
 /* ---------------------------------------------------------------------
+   Poin & level (Eco Points)
+   --------------------------------------------------------------------- */
+function loadPoints() {
+  const n = parseInt(safeGet(POINTS_KEY), 10);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+function levelIndex(p) {
+  let idx = 0;
+  LEVELS.forEach((lv, i) => { if (p >= lv.min) idx = i; });
+  return idx;
+}
+
+function isValidScan(hasil) {
+  return kategori(hasil.nama) !== "lain" && hasil.prob >= CONFIDENCE_THRESHOLD;
+}
+
+function renderPoints(animate) {
+  const idx = levelIndex(points);
+  const lv = LEVELS[idx];
+  const next = LEVELS[idx + 1];
+  let pct = 100;
+  let teksNext = "Level tertinggi! 🎉";
+  if (next) {
+    pct = Math.round(((points - lv.min) / (next.min - lv.min)) * 100);
+    teksNext = (next.min - points) + " poin lagi ke " + next.ikon + " " + next.nama;
+  }
+
+  // Papan skor mini + progress bar
+  el.hudPoints.textContent = points;
+  el.hudLevel.textContent = lv.ikon + " " + lv.nama;
+  el.hudFill.style.width = pct + "%";
+  el.hudBar.setAttribute("aria-valuenow", String(pct));
+  el.hudNext.textContent = teksNext;
+
+  // Tangga level
+  el.levelList.textContent = "";
+  LEVELS.forEach((l, i) => {
+    const li = document.createElement("li");
+    li.className = i < idx ? "done" : i === idx ? "now" : "";
+    const ikon = document.createElement("span");
+    ikon.className = "lv-icon";
+    ikon.textContent = l.ikon;
+    const nama = document.createElement("strong");
+    nama.textContent = l.nama;
+    const aturan = document.createElement("span");
+    aturan.className = "muted small";
+    aturan.textContent = i === 0 ? "mulai dari 0 poin" : l.min + " poin · " + (l.min / POINTS_PER_SCAN) + "x scan";
+    const status = document.createElement("span");
+    status.className = "lv-status";
+    status.textContent = i < idx ? "✓" : i === idx ? "Level kamu" : "";
+    li.append(ikon, nama, aturan, status);
+    el.levelList.appendChild(li);
+  });
+
+  if (animate) {
+    el.hud.classList.remove("bump");
+    void el.hud.offsetWidth; // mulai ulang animasi
+    el.hud.classList.add("bump");
+  }
+}
+
+function showGain(teks, sukses) {
+  el.pointsGain.textContent = teks;
+  el.pointsGain.className = "points-gain" + (sukses ? "" : " is-info");
+  el.pointsGain.hidden = false;
+}
+
+/* Dipanggil setelah hasil tampil. Poin hanya untuk hasil yang yakin,
+   dan satu foto hanya dihitung sekali (analisis ulang foto sama = 0 poin). */
+function handleScore(hasil) {
+  if (!isValidScan(hasil)) return;
+  if (imageId === lastAwardedId) {
+    showGain("Foto ini sudah dihitung. Scan sampah lain untuk menambah poin!", false);
+    return;
+  }
+  lastAwardedId = imageId;
+  const sebelum = levelIndex(points);
+  points += POINTS_PER_SCAN;
+  safeSet(POINTS_KEY, String(points));
+  const sesudah = levelIndex(points);
+  renderPoints(true);
+  showGain("+" + POINTS_PER_SCAN + " Eco Points 🟢 · Total " + points, true);
+  if (sesudah > sebelum) {
+    // Tahan hasil scan sebentar, baru munculkan pop-up naik level
+    setTimeout(() => openLevelUp(sesudah), LEVELUP_DELAY_MS);
+  }
+}
+
+function launchConfetti() {
+  el.confetti.textContent = "";
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const warna = ["#22c55e", "#facc15", "#38bdf8", "#f472b6", "#fb923c", "#a78bfa"];
+  for (let i = 0; i < 80; i++) {
+    const s = document.createElement("span");
+    s.style.left = Math.random() * 100 + "%";
+    s.style.background = warna[i % warna.length];
+    s.style.width = 6 + Math.random() * 6 + "px";
+    s.style.height = 10 + Math.random() * 8 + "px";
+    s.style.animationDuration = 2.8 + Math.random() * 2.4 + "s";
+    s.style.animationDelay = Math.random() * 1.2 + "s";
+    s.style.setProperty("--drift", Math.random() * 160 - 80 + "px");
+    el.confetti.appendChild(s);
+  }
+}
+
+function openLevelUp(idx) {
+  const lv = LEVELS[idx];
+  const next = LEVELS[idx + 1];
+  el.levelEmoji.textContent = lv.ikon;
+  el.levelTitle.textContent = "SELAMAT! Kamu naik level menjadi " + lv.nama.toUpperCase() + "!";
+  el.levelDesc.textContent = lv.pesan + (next
+    ? " Target berikutnya: " + next.nama + " di " + next.min + " poin."
+    : " Kamu sudah di level tertinggi!");
+  lastFocus = document.activeElement;
+  el.levelModal.hidden = false;
+  document.body.classList.add("modal-open");
+  launchConfetti();
+  el.btnLevelClose.focus();
+}
+
+function closeLevelUp() {
+  if (el.levelModal.hidden) return;
+  el.levelModal.hidden = true;
+  document.body.classList.remove("modal-open");
+  el.confetti.textContent = "";
+  if (lastFocus && lastFocus.focus) lastFocus.focus();
+}
+
+el.btnLevelClose.addEventListener("click", closeLevelUp);
+el.levelModal.addEventListener("click", (e) => { if (e.target === el.levelModal) closeLevelUp(); });
+document.addEventListener("keydown", (e) => {
+  if (el.levelModal.hidden) return;
+  if (e.key === "Escape") closeLevelUp();
+  if (e.key === "Tab") { e.preventDefault(); el.btnLevelClose.focus(); } // satu tombol saja: fokus tetap di dalam pop-up
+});
+
+el.btnResetPoints.addEventListener("click", () => {
+  if (confirm("Reset Eco Points dan level ke 0 di perangkat ini?")) {
+    points = 0;
+    safeSet(POINTS_KEY, "0");
+    renderPoints(false);
+  }
+});
+
+/* ---------------------------------------------------------------------
    Tombol & inisialisasi
    --------------------------------------------------------------------- */
 function scrollToScanner() {
@@ -489,6 +659,8 @@ window.addEventListener("pagehide", stopCamera);
 initTheme();
 setMode("idle");
 renderHistory();
+points = loadPoints();
+renderPoints(false);
 $("year").textContent = new Date().getFullYear();
 if (DEMO) el.demoBanner.hidden = false;
 else ensureModel().catch(() => showNotice("Model AI gagal dimuat. Periksa MODEL_URL di script.js."));
