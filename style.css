@@ -276,18 +276,16 @@ code { background: var(--bg-alt); padding: 1px 6px; border-radius: 6px; font-siz
 
 /* ===== Poin & level ===== */
 .hud {
-  position: absolute; top: 10px; right: 10px; z-index: 3;
-  max-width: calc(100% - 20px);
-  background: rgba(8, 24, 14, .74); color: #fff;
-  padding: 8px 12px; border-radius: 14px;
-  font-size: .8rem; font-weight: 700; text-align: left;
-  backdrop-filter: blur(4px);
+  margin-top: 12px; padding: 10px 14px;
+  background: var(--bg-alt); color: var(--text);
+  border: 1px solid var(--border); border-radius: 14px;
+  font-size: .9rem; font-weight: 700; text-align: left;
 }
-.hud-row { display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: center; }
-.hud-sep { opacity: .5; }
-.hud-bar { height: 6px; border-radius: 999px; background: rgba(255,255,255,.25); margin-top: 6px; overflow: hidden; }
-.hud-fill { height: 100%; width: 0; background: #4ade80; border-radius: inherit; transition: width .6s ease; }
-.hud-next { margin-top: 4px; font-size: .72rem; font-weight: 600; opacity: .85; }
+.hud-row { display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: center; justify-content: space-between; }
+.hud-sep { display: none; }
+.hud-bar { height: 8px; border-radius: 999px; background: var(--border); margin-top: 8px; overflow: hidden; }
+.hud-fill { height: 100%; width: 0; background: var(--primary); border-radius: inherit; transition: width .6s ease; }
+.hud-next { margin-top: 6px; font-size: .8rem; font-weight: 600; color: var(--muted); }
 .hud.bump { animation: bump .6s ease; }
 @keyframes bump {
   0% { transform: scale(1); }
