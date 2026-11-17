@@ -8,7 +8,7 @@
    2. Klik Export Model > Upload (shareable link) > salin link-nya.
    3. Tempel di MODEL_URL di bawah (harus diakhiri tanda "/").
    ===================================================================== */
-const MODEL_URL = "https://teachablemachine.withgoogle.com/models/GANTI_DENGAN_ID_MODELMU/";
+const MODEL_URL = "https://teachablemachine.withgoogle.com/models/axQhhKyQN/";
 const CONFIDENCE_THRESHOLD = 0.70; // di bawah ini hasil dianggap "kurang yakin"
 const MIN_SCAN_MS = 900;           // lama minimal animasi scan
 const MAX_HISTORY = 100;
