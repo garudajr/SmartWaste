@@ -8,13 +8,14 @@
    2. Klik Export Model > Upload (shareable link) > salin link-nya.
    3. Tempel di MODEL_URL di bawah (harus diakhiri tanda "/").
    ===================================================================== */
-const MODEL_URL = "https://teachablemachine.withgoogle.com/models/oYXRr1aM2/";
+const MODEL_URL = "https://teachablemachine.withgoogle.com/models/GANTI_DENGAN_ID_MODELMU/";
 const CONFIDENCE_THRESHOLD = 0.70; // di bawah ini hasil dianggap "kurang yakin"
 const MIN_SCAN_MS = 900;           // lama minimal animasi scan
 const MAX_HISTORY = 100;
 const HISTORY_KEY = "pilahpintar_riwayat";
 const THEME_KEY = "pilahpintar_tema";
 const POINTS_KEY = "pilahpintar_poin";
+const TOTAL_KEY = "pilahpintar_total";   // jumlah kumulatif Organik/Anorganik (untuk grafik)
 const POINTS_PER_SCAN = 10;     // poin tiap scan sampah yang berhasil dikenali
 const LEVELUP_DELAY_MS = 1600;  // jeda sebelum pop-up naik level muncul
 
@@ -90,7 +91,13 @@ const INFO = {
    --------------------------------------------------------------------- */
 const $ = (id) => document.getElementById(id);
 const el = {
-  btnTheme: $("btnTheme"), heroCamera: $("heroCamera"), heroUpload: $("heroUpload"),
+  btnTheme: $("btnTheme"),
+  btnMenu: $("btnMenu"), btnMenuClose: $("btnMenuClose"), sidebar: $("sidebar"), overlay: $("overlay"),
+  btnScanGroup: $("btnScanGroup"), scanSub: $("scanSub"), navScan: $("navScan"),
+  sbPoints: $("sbPoints"), sbLevel: $("sbLevel"), gallery: $("gallery"),
+  lvEmoji: $("lvEmoji"), lvName: $("lvName"), lvPoints: $("lvPoints"), lvBar: $("lvBar"),
+  lvFill: $("lvFill"), lvNext: $("lvNext"), lvScans: $("lvScans"),
+  chartWrap: $("chartWrap"), pieChart: $("pieChart"), chartEmpty: $("chartEmpty"), chartSummary: $("chartSummary"),
   btnCamera: $("btnCamera"), btnUpload: $("btnUpload"), fileInput: $("fileInput"),
   btnAnalyze: $("btnAnalyze"), btnSwitch: $("btnSwitch"), btnReset: $("btnReset"),
   notice: $("notice"), stage: $("stage"), placeholder: $("placeholder"),
@@ -161,6 +168,7 @@ el.btnTheme.addEventListener("click", () => {
   const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
   applyTheme(next);
   safeSet(THEME_KEY, next);
+  if (currentView === "riwayat") renderChart();
 });
 
 /* ---------------------------------------------------------------------
@@ -373,7 +381,6 @@ async function analyze() {
     if (sisa > 0) await sleep(sisa);
 
     renderResult(hasil);
-    saveHistory(hasil);
     handleScore(hasil);
   } catch (err) {
     console.error(err);
@@ -455,9 +462,27 @@ function loadHistory() {
   } catch (e) { return []; }
 }
 
+function loadTotals() {
+  try {
+    const o = JSON.parse(safeGet(TOTAL_KEY));
+    if (o && Number.isFinite(o.organik) && Number.isFinite(o.anorganik)) {
+      return { organik: Math.max(0, o.organik | 0), anorganik: Math.max(0, o.anorganik | 0) };
+    }
+  } catch (e) { /* lanjut ke cadangan */ }
+  // Cadangan (data lama): hitung dari riwayat yang sudah ada
+  const data = loadHistory();
+  return {
+    organik: data.filter((d) => d.kat === "organik").length,
+    anorganik: data.filter((d) => d.kat === "anorganik").length
+  };
+}
+
 function saveHistory(hasil) {
   const kat = kategori(hasil.nama);
   if (kat === "lain" || hasil.prob < CONFIDENCE_THRESHOLD) return; // hanya hasil yang yakin
+  const totals = loadTotals(); // dibaca sebelum riwayat berubah
+  totals[kat] += 1;
+  safeSet(TOTAL_KEY, JSON.stringify(totals));
   const data = loadHistory();
   data.unshift({ kat, prob: hasil.prob, t: Date.now() });
   safeSet(HISTORY_KEY, JSON.stringify(data.slice(0, MAX_HISTORY)));
@@ -466,8 +491,10 @@ function saveHistory(hasil) {
 
 function renderHistory() {
   const data = loadHistory();
-  el.countOrganik.textContent = data.filter((d) => d.kat === "organik").length;
-  el.countAnorganik.textContent = data.filter((d) => d.kat === "anorganik").length;
+  const totals = loadTotals();
+  el.countOrganik.textContent = totals.organik;
+  el.countAnorganik.textContent = totals.anorganik;
+  el.lvScans.textContent = totals.organik + totals.anorganik;
   el.historyList.textContent = "";
   data.slice(0, 8).forEach((d) => {
     const li = document.createElement("li");
@@ -483,14 +510,89 @@ function renderHistory() {
   });
   el.historyEmpty.hidden = data.length > 0;
   el.btnClearHistory.hidden = data.length === 0;
+  if (currentView === "riwayat") renderChart();
 }
 
 el.btnClearHistory.addEventListener("click", () => {
-  if (confirm("Hapus semua riwayat scan di perangkat ini?")) {
+  if (confirm("Hapus semua riwayat scan dan data grafik di perangkat ini?")) {
     safeSet(HISTORY_KEY, "[]");
+    safeSet(TOTAL_KEY, JSON.stringify({ organik: 0, anorganik: 0 }));
     renderHistory();
   }
 });
+
+/* ---------------------------------------------------------------------
+   Grafik lingkaran (Chart.js) dari data localStorage
+   --------------------------------------------------------------------- */
+const CHART_EMPTY_TEXT = "Belum ada data untuk grafik. Coba scan sampah pertamamu!";
+let pieChart = null;
+
+function destroyChart() {
+  if (pieChart) { pieChart.destroy(); pieChart = null; }
+}
+
+function renderChart() {
+  const t = loadTotals();
+  const total = t.organik + t.anorganik;
+
+  if (total === 0) {
+    destroyChart();
+    el.chartWrap.hidden = true;
+    el.chartEmpty.textContent = CHART_EMPTY_TEXT;
+    el.chartEmpty.hidden = false;
+    el.chartSummary.textContent = "";
+    return;
+  }
+
+  const pOrg = Math.round((t.organik / total) * 100);
+  const pAno = 100 - pOrg;
+  el.chartSummary.textContent = total + " sampah berhasil dipindai · Organik " + pOrg + "% · Anorganik " + pAno + "%";
+  el.pieChart.setAttribute("aria-label",
+    "Diagram lingkaran: " + t.organik + " organik (" + pOrg + " persen) dan " + t.anorganik + " anorganik (" + pAno + " persen)");
+
+  if (typeof Chart === "undefined") {
+    destroyChart();
+    el.chartWrap.hidden = true;
+    el.chartEmpty.textContent = "Grafik tidak bisa dimuat (library Chart.js butuh internet). Angka di bawah tetap akurat.";
+    el.chartEmpty.hidden = false;
+    return;
+  }
+
+  el.chartEmpty.hidden = true;
+  el.chartWrap.hidden = false;
+  const css = getComputedStyle(document.documentElement);
+  const warnaTeks = css.getPropertyValue("--text").trim() || "#12301c";
+  const warnaKartu = css.getPropertyValue("--card").trim() || "#ffffff";
+
+  destroyChart();
+  pieChart = new Chart(el.pieChart, {
+    type: "pie",
+    data: {
+      labels: ["Organik", "Anorganik"],
+      datasets: [{
+        data: [t.organik, t.anorganik],
+        backgroundColor: ["#22c55e", "#eab308"],
+        borderColor: warnaKartu,
+        borderWidth: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { position: "bottom", labels: { color: warnaTeks, font: { size: 14, weight: "600" }, padding: 16 } },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => {
+              const v = ctx.parsed;
+              return " " + ctx.label + ": " + v + " scan (" + Math.round((v / total) * 100) + "%)";
+            }
+          }
+        }
+      }
+    }
+  });
+}
 
 /* ---------------------------------------------------------------------
    Poin & level (Eco Points)
@@ -527,6 +629,18 @@ function renderPoints(animate) {
   el.hudFill.style.width = pct + "%";
   el.hudBar.setAttribute("aria-valuenow", String(pct));
   el.hudNext.textContent = teksNext;
+
+  // Halaman Level & Poin
+  el.lvEmoji.textContent = lv.ikon;
+  el.lvName.textContent = lv.nama;
+  el.lvPoints.textContent = points;
+  el.lvFill.style.width = pct + "%";
+  el.lvBar.setAttribute("aria-valuenow", String(pct));
+  el.lvNext.textContent = teksNext;
+
+  // Ringkasan di sidebar
+  el.sbPoints.textContent = points;
+  el.sbLevel.textContent = lv.ikon + " " + lv.nama;
 
   // Tangga level
   el.levelList.textContent = "";
@@ -570,6 +684,7 @@ function handleScore(hasil) {
     return;
   }
   lastAwardedId = imageId;
+  saveHistory(hasil); // riwayat & grafik ikut hanya untuk foto baru
   const sebelum = levelIndex(points);
   points += POINTS_PER_SCAN;
   safeSet(POINTS_KEY, String(points));
@@ -639,7 +754,164 @@ el.btnResetPoints.addEventListener("click", () => {
 });
 
 /* ---------------------------------------------------------------------
-   Tombol & inisialisasi
+   Sidebar menu
+   --------------------------------------------------------------------- */
+let sidebarOpen = false;
+let menuFocus = null;
+
+function openSidebar() {
+  if (sidebarOpen) return;
+  sidebarOpen = true;
+  menuFocus = document.activeElement;
+  el.sidebar.classList.add("open");
+  el.overlay.classList.add("show");
+  el.sidebar.setAttribute("aria-hidden", "false");
+  el.btnMenu.setAttribute("aria-expanded", "true");
+  document.body.classList.add("menu-open");
+  el.btnMenuClose.focus();
+}
+
+function closeSidebar(restoreFocus) {
+  if (!sidebarOpen) return;
+  sidebarOpen = false;
+  el.sidebar.classList.remove("open");
+  el.overlay.classList.remove("show");
+  el.sidebar.setAttribute("aria-hidden", "true");
+  el.btnMenu.setAttribute("aria-expanded", "false");
+  document.body.classList.remove("menu-open");
+  if (restoreFocus && menuFocus && menuFocus.focus) menuFocus.focus();
+}
+
+function setScanGroup(open) {
+  el.scanSub.hidden = !open;
+  el.btnScanGroup.setAttribute("aria-expanded", String(open));
+  el.navScan.classList.toggle("open", open);
+}
+
+el.btnMenu.addEventListener("click", openSidebar);
+el.btnMenuClose.addEventListener("click", () => closeSidebar(true));
+el.overlay.addEventListener("click", () => closeSidebar(true));
+el.btnScanGroup.addEventListener("click", () => setScanGroup(el.scanSub.hidden));
+
+document.addEventListener("keydown", (e) => {
+  if (!sidebarOpen || !el.levelModal.hidden) return;
+  if (e.key === "Escape") { closeSidebar(true); return; }
+  if (e.key === "Tab") { // fokus tetap di dalam sidebar
+    const f = Array.from(el.sidebar.querySelectorAll("a[href], button")).filter((n) => n.offsetParent !== null);
+    if (!f.length) return;
+    const first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+});
+
+/* ---------------------------------------------------------------------
+   Halaman (router sederhana berbasis #hash)
+   --------------------------------------------------------------------- */
+const VIEWS = ["profil", "edukasi", "scan-mulai", "scan-cara", "scan-contoh", "level", "riwayat"];
+const TITLES = {
+  "profil": "Profil Website", "edukasi": "Edukasi Sampah", "scan-mulai": "Mulai Scan",
+  "scan-cara": "Cara Kerja", "scan-contoh": "Contoh Sampah", "level": "Level & Poin", "riwayat": "Riwayat & Grafik"
+};
+let currentView = null;
+
+function showView(name) {
+  if (!VIEWS.includes(name)) name = "profil";
+  if (name === currentView) return;
+
+  // Matikan kamera saat meninggalkan halaman scan
+  if (currentView === "scan-mulai" && mode === "camera") resetAll();
+  currentView = name;
+
+  document.querySelectorAll(".view").forEach((v) => { v.hidden = v.dataset.view !== name; });
+  document.querySelectorAll("[data-nav]").forEach((a) => {
+    const aktif = a.dataset.nav === name;
+    a.classList.toggle("active", aktif);
+    if (aktif) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+  });
+  if (name.startsWith("scan-")) setScanGroup(true);
+
+  document.title = TITLES[name] + " · PilahPintar";
+  window.scrollTo(0, 0);
+  if (name === "riwayat") renderChart();
+
+  const judul = document.querySelector('.view[data-view="' + name + '"] h1, .view[data-view="' + name + '"] h2');
+  if (judul) { judul.setAttribute("tabindex", "-1"); judul.focus({ preventScroll: true }); }
+}
+
+function go(name, act) {
+  closeSidebar(false);
+  if (location.hash !== "#" + name) location.hash = name;
+  showView(name);
+  // Aksi langsung (dalam klik pengguna, supaya izin kamera/unggah foto diizinkan browser)
+  if (act === "camera") startCamera();
+  else if (act === "upload") el.fileInput.click();
+}
+
+document.addEventListener("click", (e) => {
+  const link = e.target.closest("[data-go]");
+  if (!link) return;
+  e.preventDefault();
+  go(link.dataset.go, link.dataset.act);
+});
+
+window.addEventListener("hashchange", () => showView(location.hash.slice(1)));
+
+/* ---------------------------------------------------------------------
+   Galeri contoh sampah
+   --------------------------------------------------------------------- */
+const CONTOH = [
+  { ikon: "🍌", nama: "Kulit pisang",   kat: "organik" },
+  { ikon: "🍎", nama: "Sisa apel",      kat: "organik" },
+  { ikon: "🍚", nama: "Nasi sisa",      kat: "organik" },
+  { ikon: "🥬", nama: "Sisa sayur",     kat: "organik" },
+  { ikon: "🍂", nama: "Daun kering",    kat: "organik" },
+  { ikon: "🌿", nama: "Ranting kecil",  kat: "organik" },
+  { ikon: "🥚", nama: "Cangkang telur", kat: "organik" },
+  { ikon: "☕", nama: "Ampas kopi",     kat: "organik" },
+  { ikon: "🧴", nama: "Botol plastik",  kat: "anorganik" },
+  { ikon: "🥤", nama: "Gelas plastik",  kat: "anorganik" },
+  { ikon: "🛍️", nama: "Kantong plastik", kat: "anorganik" },
+  { ikon: "📄", nama: "Kertas",         kat: "anorganik" },
+  { ikon: "📦", nama: "Kardus",         kat: "anorganik" },
+  { ikon: "🥫", nama: "Kaleng",         kat: "anorganik" },
+  { ikon: "🍾", nama: "Botol kaca",     kat: "anorganik" },
+  { ikon: "🥡", nama: "Kemasan makanan", kat: "anorganik" }
+];
+
+function renderGallery(filter) {
+  el.gallery.textContent = "";
+  CONTOH.filter((c) => filter === "all" || c.kat === filter).forEach((c) => {
+    const li = document.createElement("li");
+    li.className = "gal-item " + c.kat;
+    const ikon = document.createElement("span");
+    ikon.className = "gal-ico";
+    ikon.setAttribute("aria-hidden", "true");
+    ikon.textContent = c.ikon;
+    const nama = document.createElement("strong");
+    nama.textContent = c.nama;
+    const badge = document.createElement("span");
+    badge.className = "badge " + c.kat;
+    badge.textContent = c.kat === "organik" ? "Organik" : "Anorganik";
+    li.append(ikon, nama, badge);
+    el.gallery.appendChild(li);
+  });
+}
+
+document.querySelectorAll("[data-filter]").forEach((b) => {
+  b.addEventListener("click", () => {
+    document.querySelectorAll("[data-filter]").forEach((x) => {
+      const on = x === b;
+      x.setAttribute("aria-pressed", String(on));
+      x.classList.toggle("btn-primary", on);
+      x.classList.toggle("btn-ghost", !on);
+    });
+    renderGallery(b.dataset.filter);
+  });
+});
+
+/* ---------------------------------------------------------------------
+   Tombol scanner & inisialisasi
    --------------------------------------------------------------------- */
 function scrollToScanner() {
   el.stage.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -647,8 +919,6 @@ function scrollToScanner() {
 
 el.btnCamera.addEventListener("click", startCamera);
 el.btnUpload.addEventListener("click", () => el.fileInput.click());
-el.heroCamera.addEventListener("click", () => { document.getElementById("scanner").scrollIntoView({ behavior: "smooth" }); startCamera(); });
-el.heroUpload.addEventListener("click", () => el.fileInput.click());
 
 // Matikan kamera jika tab disembunyikan (hemat baterai & privasi)
 document.addEventListener("visibilitychange", () => {
@@ -658,9 +928,11 @@ window.addEventListener("pagehide", stopCamera);
 
 initTheme();
 setMode("idle");
-renderHistory();
 points = loadPoints();
+renderGallery("all");
+renderHistory();
 renderPoints(false);
+showView(location.hash.slice(1));
 $("year").textContent = new Date().getFullYear();
 if (DEMO) el.demoBanner.hidden = false;
 else ensureModel().catch(() => showNotice("Model AI gagal dimuat. Periksa MODEL_URL di script.js."));

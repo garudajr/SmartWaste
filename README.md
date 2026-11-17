@@ -4,13 +4,26 @@ Web statis (HTML + CSS + JavaScript) untuk mendeteksi sampah **Organik** atau **
 lewat kamera atau unggah foto, lengkap dengan kartu edukasi cara penanganannya.
 Model AI berjalan langsung di browser (TensorFlow.js + Teachable Machine), tanpa server.
 
+## Struktur menu (sidebar ☰)
+Ikon ☰ di pojok kiri atas membuka panel yang meluncur dari kiri. Halaman berpindah tanpa reload (alamat `#hash`, jadi bisa dibagikan).
+
+| Menu | Isi |
+|------|-----|
+| 🏠 Profil Website | Latar belakang, visi misi, kredit pembuat |
+| 📖 Edukasi Sampah | Ensiklopedia mini Organik vs Anorganik, tabel perbandingan, 3R |
+| 📷 Scan Sampah ▾ | **Mulai Scan** (langsung menyalakan kamera), **Cara Kerja** (panduan kamera & unggah), **Contoh Sampah** (galeri dengan filter) |
+| 🏆 Level & Poin | Eco Points, level, progress bar, tangga level |
+| 📊 Riwayat & Grafik | Pie chart (Chart.js) Organik vs Anorganik dari `localStorage`, plus scan terakhir |
+
+Mengubah nama pembuat: cari bagian **Kredit Pembuat** di `index.html`. Mengubah contoh galeri: array `CONTOH` di `script.js`.
+
 ## Fitur
 - Scanner kamera (kamera belakang jadi default di HP, bisa ganti kamera) dengan label langsung saat diarahkan
 - Unggah foto (tombol atau drag & drop) dengan pratinjau sebelum dianalisis
 - Animasi scan singkat lalu hasil besar: hijau = Organik, kuning = Anorganik
 - Kartu edukasi otomatis: penjelasan + langkah penanganan + warna tempat sampah
 - Ambang keyakinan (70%): hasil ragu diganti tips foto yang lebih baik
-- Riwayat scan dan jumlah Organik/Anorganik (disimpan di perangkat)
+- Riwayat scan dan grafik lingkaran Organik/Anorganik (disimpan di perangkat; riwayat dan grafik hanya bertambah untuk foto baru, sama seperti poin)
 - Sistem Eco Points: +10 poin tiap scan berhasil, papan skor + progress bar di layar scan, dan pop-up konfeti saat naik level
 - Mode gelap/terang, responsif untuk HP
 

@@ -13,222 +13,436 @@
   <!-- NAVBAR -->
   <header class="nav">
     <div class="wrap nav-inner">
-      <a class="brand" href="#top" aria-label="PilahPintar">
+      <button id="btnMenu" class="icon-btn" type="button" aria-label="Buka menu" aria-controls="sidebar" aria-expanded="false">☰</button>
+      <a class="brand" href="#profil" data-go="profil" aria-label="PilahPintar, ke Profil Website">
         <span class="brand-icon" aria-hidden="true">🌱</span>
         <span class="brand-name">PilahPintar</span>
       </a>
-      <nav class="nav-links" aria-label="Menu utama">
-        <a href="#scanner">Scan</a>
-        <a href="#cara">Cara Kerja</a>
-        <a href="#contoh">Contoh</a>
-        <a href="#riwayat">Level</a>
-        <a href="#tentang">Tentang</a>
-      </nav>
-      <button id="btnTheme" class="icon-btn" type="button" aria-label="Ganti mode gelap/terang" title="Mode gelap/terang">🌙</button>
+      <button id="btnTheme" class="icon-btn nav-right" type="button" aria-label="Ganti mode gelap/terang" title="Mode gelap/terang">🌙</button>
     </div>
   </header>
 
+  <!-- SIDEBAR (meluncur dari kiri) -->
+  <div id="overlay" class="sidebar-overlay"></div>
+  <aside id="sidebar" class="sidebar" aria-label="Menu navigasi" aria-hidden="true">
+    <div class="sidebar-head">
+      <span class="brand"><span class="brand-icon" aria-hidden="true">🌱</span><span class="brand-name">PilahPintar</span></span>
+      <button id="btnMenuClose" class="icon-btn" type="button" aria-label="Tutup menu">✕</button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <ul>
+        <li><a href="#profil" data-go="profil" data-nav="profil"><span class="nav-ico" aria-hidden="true">🏠</span>Profil Website</a></li>
+        <li><a href="#edukasi" data-go="edukasi" data-nav="edukasi"><span class="nav-ico" aria-hidden="true">📖</span>Edukasi Sampah</a></li>
+
+        <li class="nav-group" id="navScan">
+          <button id="btnScanGroup" class="nav-group-btn" type="button" aria-expanded="false" aria-controls="scanSub">
+            <span class="nav-ico" aria-hidden="true">📷</span><span class="nav-group-label">Scan Sampah</span><span class="chev" aria-hidden="true">▾</span>
+          </button>
+          <ul id="scanSub" class="sub" hidden>
+            <li><a href="#scan-mulai" data-go="scan-mulai" data-act="camera" data-nav="scan-mulai">Mulai Scan</a></li>
+            <li><a href="#scan-cara" data-go="scan-cara" data-nav="scan-cara">Cara Kerja</a></li>
+            <li><a href="#scan-contoh" data-go="scan-contoh" data-nav="scan-contoh">Contoh Sampah</a></li>
+          </ul>
+        </li>
+
+        <li><a href="#level" data-go="level" data-nav="level"><span class="nav-ico" aria-hidden="true">🏆</span>Level &amp; Poin</a></li>
+        <li><a href="#riwayat" data-go="riwayat" data-nav="riwayat"><span class="nav-ico" aria-hidden="true">📊</span>Riwayat &amp; Grafik</a></li>
+      </ul>
+    </nav>
+
+    <div class="sidebar-foot">
+      <span>🟢 <strong id="sbPoints">0</strong> Eco Points</span>
+      <span id="sbLevel" class="muted small">🌰 Pemula</span>
+    </div>
+  </aside>
+
   <main id="top">
 
-    <!-- HERO -->
-    <section class="hero">
-      <div class="wrap hero-inner">
-        <span class="pill">♻️ Pilah sampah dengan AI</span>
-        <h1>Bingung menentukan jenis sampah di sekitar sekolah?</h1>
-        <p class="lead">
-          Cukup arahkan kamera atau unggah foto sampahmu, dan biarkan sistem AI kami
-          mendeteksi apakah sampah tersebut termasuk <strong>Organik</strong> atau
-          <strong>Anorganik</strong> dalam hitungan detik. Mari ciptakan lingkungan
-          sekolah yang lebih bersih dan hijau bersama teknologi!
-        </p>
-        <div class="hero-cta">
-          <button id="heroCamera" class="btn btn-primary" type="button">📷 Scan dengan Kamera</button>
-          <button id="heroUpload" class="btn btn-ghost" type="button">🖼️ Unggah Foto</button>
+    <!-- ============ 1. PROFIL WEBSITE ============ -->
+    <div class="view" data-view="profil">
+      <section class="hero">
+        <div class="wrap hero-inner">
+          <span class="pill">♻️ Pilah sampah dengan AI</span>
+          <h1>Bingung menentukan jenis sampah di sekitar sekolah?</h1>
+          <p class="lead">
+            Cukup arahkan kamera atau unggah foto sampahmu, dan biarkan sistem AI kami
+            mendeteksi apakah sampah tersebut termasuk <strong>Organik</strong> atau
+            <strong>Anorganik</strong> dalam hitungan detik. Mari ciptakan lingkungan
+            sekolah yang lebih bersih dan hijau bersama teknologi!
+          </p>
+          <div class="hero-cta">
+            <button class="btn btn-primary" type="button" data-go="scan-mulai" data-act="camera">📷 Scan dengan Kamera</button>
+            <button class="btn btn-ghost" type="button" data-go="scan-mulai" data-act="upload">🖼️ Unggah Foto</button>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- SCANNER -->
-    <section id="scanner" class="section">
-      <div class="wrap">
-        <div id="demoBanner" class="banner" hidden>
-          <strong>Mode demo.</strong> Model AI belum dipasang, jadi hasil di bawah hanya contoh acak.
-          Ganti <code>MODEL_URL</code> di <code>script.js</code> dengan link model Teachable Machine-mu.
+      <section class="section">
+        <div class="wrap narrow">
+          <h2>Latar Belakang</h2>
+          <p>
+            Di lingkungan sekolah, sampah organik dan anorganik sering tercampur dalam satu tempat sampah.
+            Padahal, sampah organik bisa diolah menjadi kompos, sedangkan sebagian besar sampah anorganik
+            bisa didaur ulang. Masalahnya, tidak semua orang yakin cara membedakannya.
+          </p>
+          <p>
+            PilahPintar (Smart Waste) hadir sebagai teman belajar: cukup foto sampahnya, AI memberi tahu
+            jenisnya beserta cara membuangnya. Setiap scan juga memberi Eco Points, sehingga memilah sampah
+            terasa seperti permainan yang menyenangkan.
+          </p>
         </div>
+      </section>
 
-        <div class="card scanner">
-          <div class="scanner-head">
-            <h2>Scanner Sampah</h2>
-            <p class="muted">Pilih salah satu: kamera langsung atau foto dari galeri.</p>
-          </div>
-
-          <div class="source-switch" role="group" aria-label="Pilih sumber gambar">
-            <button id="btnCamera" class="btn btn-primary" type="button">📷 Mulai Kamera</button>
-            <button id="btnUpload" class="btn btn-ghost" type="button">🖼️ Upload Foto</button>
-            <input id="fileInput" type="file" accept="image/*" hidden>
-          </div>
-
-          <div id="notice" class="notice" role="alert" hidden></div>
-
-          <!-- AREA PRATINJAU -->
-          <div id="stage" class="stage" aria-live="polite">
-            <div id="placeholder" class="placeholder">
-              <div class="placeholder-icon" aria-hidden="true">🗑️</div>
-              <p><strong>Belum ada gambar</strong></p>
-              <p class="muted">Tekan <em>Mulai Kamera</em>, atau seret foto sampah ke sini.</p>
+      <section class="section alt">
+        <div class="wrap">
+          <h2 class="center">Visi &amp; Misi</h2>
+          <div class="grid2">
+            <div class="card">
+              <h3>🌍 Visi</h3>
+              <p class="muted">
+                Mewujudkan lingkungan sekolah yang bersih, hijau, dan peduli sampah, di mana setiap warga
+                sekolah terbiasa memilah sampah sejak dari tangannya sendiri.
+              </p>
             </div>
-            <video id="video" playsinline muted hidden></video>
-            <img id="preview" alt="Pratinjau foto sampah" hidden>
-            <div id="liveBadge" class="live-badge" hidden>Mengarahkan…</div>
-            <div id="loading" class="loading" hidden>
-              <div class="scanline" aria-hidden="true"></div>
-              <div class="spinner" aria-hidden="true"></div>
-              <p>Menganalisis…</p>
+            <div class="card">
+              <h3>🎯 Misi</h3>
+              <ul class="plain-list">
+                <li>Mengenalkan perbedaan sampah organik dan anorganik dengan cara yang mudah.</li>
+                <li>Memanfaatkan teknologi AI agar memilah sampah lebih cepat dan akurat.</li>
+                <li>Menumbuhkan kebiasaan baik lewat poin, level, dan riwayat pencapaian.</li>
+                <li>Mendukung pengolahan kompos dan Bank Sampah sekolah.</li>
+              </ul>
             </div>
           </div>
-
-          <!-- PAPAN SKOR MINI (di bawah layar kamera) -->
-          <div id="hud" class="hud" aria-label="Poin dan level kamu">
-            <div class="hud-row">
-              <span>🟢 Eco Points: <span id="hudPoints">0</span></span>
-              <span class="hud-sep" aria-hidden="true">|</span>
-              <span id="hudLevel">🌰 Pemula</span>
-            </div>
-            <div id="hudBar" class="hud-bar" role="progressbar" aria-label="Kemajuan menuju level berikutnya" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-              <div id="hudFill" class="hud-fill"></div>
-            </div>
-            <div id="hudNext" class="hud-next"></div>
-          </div>
-
-          <div class="controls">
-            <button id="btnAnalyze" class="btn btn-primary btn-lg" type="button" hidden>📸 Scan Sekarang</button>
-            <button id="btnSwitch" class="btn btn-ghost" type="button" hidden>🔄 Ganti Kamera</button>
-            <button id="btnReset" class="btn btn-ghost" type="button" hidden>✖ Ulangi</button>
-          </div>
-          <p id="modelStatus" class="muted small center" hidden></p>
         </div>
+      </section>
 
-        <!-- HASIL -->
-        <div id="result" class="result" hidden>
-          <div id="resultBanner" class="result-banner">
-            <div id="resultIcon" class="result-icon" aria-hidden="true">✅</div>
-            <div class="result-main">
-              <p class="result-kicker">Hasil deteksi</p>
-              <h2 id="resultLabel" class="result-label">ORGANIK</h2>
-              <p id="resultSub" class="result-sub"></p>
+      <section class="section">
+        <div class="wrap narrow">
+          <h2>Kredit Pembuat</h2>
+          <div class="card credits">
+            <!-- Ganti teks di bawah dengan nama tim/kelas kamu -->
+            <p><strong>Dikembangkan oleh:</strong> [Nama tim / kelas pembuat]</p>
+            <p><strong>Sekolah:</strong> SMAN 3 Blitar</p>
+            <p><strong>Pembimbing:</strong> [Nama guru pembimbing]</p>
+            <p class="muted small">
+              Dibangun dengan HTML, CSS, JavaScript, TensorFlow.js, Teachable Machine, dan Chart.js.
+              Foto yang kamu scan tidak dikirim ke server mana pun.
+            </p>
+          </div>
+          <p class="muted small">
+            Catatan: AI bisa keliru pada benda yang ambigu atau foto yang kurang jelas.
+            Jika hasil tampak janggal, coba foto ulang dari jarak lebih dekat dan terang.
+          </p>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ 2. EDUKASI SAMPAH ============ -->
+    <div class="view" data-view="edukasi" hidden>
+      <section class="section">
+        <div class="wrap">
+          <h1 class="page-title center">📖 Edukasi Sampah</h1>
+          <p class="center muted page-sub">Ensiklopedia mini: kenali dua jenis sampah yang paling sering kita temui.</p>
+
+          <div class="grid2">
+            <article class="card ex ex-organik edu-big">
+              <h2>🌿 Sampah Organik <span class="tag">Tempat Hijau</span></h2>
+              <p>Berasal dari makhluk hidup (tumbuhan dan hewan), mudah membusuk, dan diurai oleh mikroorganisme menjadi tanah yang subur.</p>
+              <h4>Contoh</h4>
+              <ul class="chips">
+                <li>🍚 Sisa makanan</li><li>🍌 Kulit buah</li><li>🥬 Sisa sayur</li>
+                <li>🍂 Daun kering</li><li>🌱 Ranting kecil</li><li>🥚 Cangkang telur</li>
+              </ul>
+              <h4>Diolah menjadi</h4>
+              <p>Kompos atau pupuk alami untuk taman sekolah.</p>
+            </article>
+
+            <article class="card ex ex-anorganik edu-big">
+              <h2>♻️ Sampah Anorganik <span class="tag">Tempat Kuning/Biru</span></h2>
+              <p>Berasal dari bahan buatan atau hasil tambang, sangat sulit terurai oleh alam, tetapi banyak yang bisa didaur ulang.</p>
+              <h4>Contoh</h4>
+              <ul class="chips">
+                <li>🧴 Botol plastik</li><li>🛍️ Kantong plastik</li><li>🥫 Kaleng</li>
+                <li>🍾 Botol kaca</li><li>📄 Kertas</li><li>📦 Kardus</li>
+              </ul>
+              <h4>Diolah menjadi</h4>
+              <p>Bahan daur ulang lewat Bank Sampah sekolah.</p>
+            </article>
+          </div>
+
+          <div class="card compare">
+            <h2>Perbandingan Singkat</h2>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr><th></th><th>🌿 Organik</th><th>♻️ Anorganik</th></tr>
+                </thead>
+                <tbody>
+                  <tr><th scope="row">Asal</th><td>Makhluk hidup</td><td>Bahan buatan / tambang</td></tr>
+                  <tr><th scope="row">Penguraian</th><td>Cepat (hari hingga bulan)</td><td>Sangat lama (puluhan hingga ribuan tahun)</td></tr>
+                  <tr><th scope="row">Penanganan</th><td>Dikomposkan</td><td>Didaur ulang / disetor ke Bank Sampah</td></tr>
+                  <tr><th scope="row">Tempat sampah</th><td>🟢 Hijau</td><td>🟡 Kuning/Biru</td></tr>
+                </tbody>
+              </table>
             </div>
-            <div class="result-conf">
-              <span id="resultPct" class="pct">0%</span>
-              <div class="bar" aria-hidden="true"><div id="confBar" class="bar-fill"></div></div>
-              <span class="small muted">keyakinan</span>
+            <p class="muted small">
+              Waktu penguraian hanya perkiraan dan bergantung pada kondisi lingkungan.
+              Kertas sebenarnya berasal dari kayu, tetapi dalam pemilahan sekolah dimasukkan ke anorganik karena bisa didaur ulang.
+            </p>
+          </div>
+
+          <div class="card">
+            <h2>Kebiasaan 3R</h2>
+            <div class="grid3 tight">
+              <div class="r-item"><span class="r-ico" aria-hidden="true">🚫</span><strong>Reduce</strong><span class="muted small">Kurangi pemakaian barang sekali pakai.</span></div>
+              <div class="r-item"><span class="r-ico" aria-hidden="true">🔁</span><strong>Reuse</strong><span class="muted small">Pakai ulang botol minum dan kotak bekal.</span></div>
+              <div class="r-item"><span class="r-ico" aria-hidden="true">♻️</span><strong>Recycle</strong><span class="muted small">Daur ulang sampah yang sudah dipilah.</span></div>
             </div>
           </div>
 
-          <p id="pointsGain" class="points-gain" role="status" hidden></p>
-
-          <!-- KARTU EDUKASI -->
-          <article id="eduCard" class="card edu">
-            <header class="edu-head">
-              <span id="eduIcon" class="edu-icon" aria-hidden="true">🌿</span>
-              <h3 id="eduTitle">Apa itu sampah organik?</h3>
-            </header>
-            <p id="eduDesc" class="edu-desc"></p>
-            <h4>Cara menanganinya</h4>
-            <ol id="eduSteps" class="steps"></ol>
-            <p id="eduBin" class="bin"></p>
-            <p id="eduNote" class="note" hidden></p>
-          </article>
+          <p class="center"><button class="btn btn-primary" type="button" data-go="scan-mulai" data-act="camera">📷 Coba Scan Sampah</button></p>
         </div>
-      </div>
-    </section>
+      </section>
+    </div>
 
-    <!-- CARA KERJA -->
-    <section id="cara" class="section alt">
-      <div class="wrap">
-        <h2 class="center">Cara Kerja</h2>
-        <div class="grid3">
-          <div class="card step-card"><span class="num">1</span><h3>Arahkan</h3><p class="muted">Aktifkan kamera atau pilih foto sampah dari galeri.</p></div>
-          <div class="card step-card"><span class="num">2</span><h3>Scan</h3><p class="muted">AI membandingkan gambar dan memutuskan Organik atau Anorganik.</p></div>
-          <div class="card step-card"><span class="num">3</span><h3>Buang dengan Benar</h3><p class="muted">Ikuti panduan penanganan dan pilih tempat sampah yang tepat.</p></div>
+    <!-- ============ 3a. SCAN: MULAI SCAN ============ -->
+    <div class="view" data-view="scan-mulai" hidden>
+      <section id="scanner" class="section">
+        <div class="wrap">
+          <div id="demoBanner" class="banner" hidden>
+            <strong>Mode demo.</strong> Model AI belum dipasang, jadi hasil di bawah hanya contoh acak.
+            Ganti <code>MODEL_URL</code> di <code>script.js</code> dengan link model Teachable Machine-mu.
+          </div>
+
+          <div class="card scanner">
+            <div class="scanner-head">
+              <h1 class="page-title">📷 Scanner Sampah</h1>
+              <p class="muted">Pilih salah satu: kamera langsung atau foto dari galeri.</p>
+            </div>
+
+            <div class="source-switch" role="group" aria-label="Pilih sumber gambar">
+              <button id="btnCamera" class="btn btn-primary" type="button">📷 Mulai Kamera</button>
+              <button id="btnUpload" class="btn btn-ghost" type="button">🖼️ Upload Foto</button>
+              <input id="fileInput" type="file" accept="image/*" hidden>
+            </div>
+
+            <div id="notice" class="notice" role="alert" hidden></div>
+
+            <!-- AREA PRATINJAU -->
+            <div id="stage" class="stage" aria-live="polite">
+              <div id="placeholder" class="placeholder">
+                <div class="placeholder-icon" aria-hidden="true">🗑️</div>
+                <p><strong>Belum ada gambar</strong></p>
+                <p class="muted">Tekan <em>Mulai Kamera</em>, atau seret foto sampah ke sini.</p>
+              </div>
+              <video id="video" playsinline muted hidden></video>
+              <img id="preview" alt="Pratinjau foto sampah" hidden>
+              <div id="liveBadge" class="live-badge" hidden>Mengarahkan…</div>
+              <div id="loading" class="loading" hidden>
+                <div class="scanline" aria-hidden="true"></div>
+                <div class="spinner" aria-hidden="true"></div>
+                <p>Menganalisis…</p>
+              </div>
+            </div>
+
+            <!-- PAPAN SKOR MINI -->
+            <div id="hud" class="hud" aria-label="Poin dan level kamu">
+              <div class="hud-row">
+                <span>🟢 Eco Points: <span id="hudPoints">0</span></span>
+                <span class="hud-sep" aria-hidden="true">|</span>
+                <span id="hudLevel">🌰 Pemula</span>
+              </div>
+              <div id="hudBar" class="hud-bar" role="progressbar" aria-label="Kemajuan menuju level berikutnya" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <div id="hudFill" class="hud-fill"></div>
+              </div>
+              <div id="hudNext" class="hud-next"></div>
+            </div>
+
+            <div class="controls">
+              <button id="btnAnalyze" class="btn btn-primary btn-lg" type="button" hidden>📸 Scan Sekarang</button>
+              <button id="btnSwitch" class="btn btn-ghost" type="button" hidden>🔄 Ganti Kamera</button>
+              <button id="btnReset" class="btn btn-ghost" type="button" hidden>✖ Ulangi</button>
+            </div>
+            <p id="modelStatus" class="muted small center" hidden></p>
+          </div>
+
+          <!-- HASIL -->
+          <div id="result" class="result" hidden>
+            <div id="resultBanner" class="result-banner">
+              <div id="resultIcon" class="result-icon" aria-hidden="true">✅</div>
+              <div class="result-main">
+                <p class="result-kicker">Hasil deteksi</p>
+                <h2 id="resultLabel" class="result-label">ORGANIK</h2>
+                <p id="resultSub" class="result-sub"></p>
+              </div>
+              <div class="result-conf">
+                <span id="resultPct" class="pct">0%</span>
+                <div class="bar" aria-hidden="true"><div id="confBar" class="bar-fill"></div></div>
+                <span class="small muted">keyakinan</span>
+              </div>
+            </div>
+
+            <p id="pointsGain" class="points-gain" role="status" hidden></p>
+
+            <!-- KARTU EDUKASI -->
+            <article id="eduCard" class="card edu">
+              <header class="edu-head">
+                <span id="eduIcon" class="edu-icon" aria-hidden="true">🌿</span>
+                <h3 id="eduTitle">Apa itu sampah organik?</h3>
+              </header>
+              <p id="eduDesc" class="edu-desc"></p>
+              <h4>Cara menanganinya</h4>
+              <ol id="eduSteps" class="steps"></ol>
+              <p id="eduBin" class="bin"></p>
+              <p id="eduNote" class="note" hidden></p>
+            </article>
+          </div>
         </div>
-        <p class="muted small center tips">
-          Tips: foto satu jenis sampah saja, dekat, dengan cahaya cukup dan latar yang polos.
-        </p>
-      </div>
-    </section>
+      </section>
+    </div>
 
-    <!-- CONTOH -->
-    <section id="contoh" class="section">
-      <div class="wrap">
-        <h2 class="center">Contoh Sampah</h2>
-        <div class="grid2">
-          <div class="card ex ex-organik">
-            <h3>🌿 Organik <span class="tag">Tempat Hijau</span></h3>
-            <ul class="chips">
-              <li>🍌 Kulit buah</li><li>🍚 Sisa makanan</li><li>🍂 Daun kering</li>
-              <li>🥬 Sisa sayur</li><li>🌱 Ranting kecil</li>
+    <!-- ============ 3b. SCAN: CARA KERJA ============ -->
+    <div class="view" data-view="scan-cara" hidden>
+      <section class="section">
+        <div class="wrap">
+          <h1 class="page-title center">🧭 Cara Kerja</h1>
+          <p class="center muted page-sub">Panduan langkah demi langkah memindai sampah, lewat kamera atau unggah foto.</p>
+
+          <div class="grid2">
+            <div class="card">
+              <h2>📷 Lewat Kamera</h2>
+              <ol class="guide">
+                <li><strong>Buka Mulai Scan.</strong> Kamera menyala otomatis. Izinkan akses kamera jika browser bertanya.</li>
+                <li><strong>Arahkan ke satu sampah.</strong> Dekat, terang, dengan latar polos. Label sementara muncul di pojok layar.</li>
+                <li><strong>Tekan Scan Sekarang.</strong> Gambar dibekukan lalu dianalisis oleh AI.</li>
+                <li><strong>Baca hasilnya.</strong> Hijau berarti Organik, kuning berarti Anorganik, lengkap dengan cara membuangnya.</li>
+              </ol>
+            </div>
+            <div class="card">
+              <h2>🖼️ Lewat Unggah Foto</h2>
+              <ol class="guide">
+                <li><strong>Buka Mulai Scan</strong> lalu tekan <em>Upload Foto</em>, atau seret foto ke area gambar.</li>
+                <li><strong>Pilih foto</strong> dari galeri (JPG atau PNG, maksimal 12 MB).</li>
+                <li><strong>Periksa pratinjau,</strong> lalu tekan <em>Analisis Foto</em>.</li>
+                <li><strong>Baca hasilnya</strong> dan ikuti panduan penanganan sampahnya.</li>
+              </ol>
+            </div>
+          </div>
+
+          <div class="card tips-card">
+            <h3>💡 Tips agar hasil akurat</h3>
+            <ul class="plain-list">
+              <li>Foto satu jenis sampah saja dalam satu gambar.</li>
+              <li>Pastikan cahaya cukup dan gambar tidak buram.</li>
+              <li>Gunakan latar polos seperti meja atau lantai bersih.</li>
+              <li>Jika hasil <em>kurang yakin</em>, ulangi dari jarak lebih dekat.</li>
             </ul>
+            <p class="muted small">
+              Setiap scan yang yakin memberi <strong>+10 Eco Points</strong>. Satu foto hanya dihitung sekali.
+            </p>
           </div>
-          <div class="card ex ex-anorganik">
-            <h3>♻️ Anorganik <span class="tag">Tempat Kuning/Biru</span></h3>
-            <ul class="chips">
-              <li>🧴 Botol plastik</li><li>📄 Kertas &amp; kardus</li><li>🥫 Kaleng</li>
-              <li>🍾 Kaca</li><li>🛍️ Kantong plastik</li>
+
+          <p class="center"><button class="btn btn-primary btn-lg" type="button" data-go="scan-mulai" data-act="camera">📷 Mulai Scan</button></p>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ 3c. SCAN: CONTOH SAMPAH ============ -->
+    <div class="view" data-view="scan-contoh" hidden>
+      <section class="section">
+        <div class="wrap">
+          <h1 class="page-title center">🖼️ Contoh Sampah</h1>
+          <p class="center muted page-sub">Galeri benda yang bisa dikenali AI. Ketuk filter untuk melihat per jenis.</p>
+
+          <div class="filter" role="group" aria-label="Filter jenis sampah">
+            <button type="button" class="btn btn-sm btn-primary" data-filter="all" aria-pressed="true">Semua</button>
+            <button type="button" class="btn btn-sm btn-ghost" data-filter="organik" aria-pressed="false">🌿 Organik</button>
+            <button type="button" class="btn btn-sm btn-ghost" data-filter="anorganik" aria-pressed="false">♻️ Anorganik</button>
+          </div>
+
+          <ul id="gallery" class="gallery"></ul>
+
+          <div class="card">
+            <h3>⚠️ Benda yang sering membingungkan</h3>
+            <ul class="plain-list">
+              <li><strong>Tisu basah kemasan:</strong> mengandung serat plastik, buang sebagai anorganik.</li>
+              <li><strong>Kertas basah atau berminyak:</strong> sulit didaur ulang, hasil AI bisa ragu.</li>
+              <li><strong>Kemasan campuran</strong> (misalnya bungkus makanan berlapis): pisahkan dulu bagian yang berbeda.</li>
             </ul>
+            <p class="muted small">Jika AI menjawab <em>kurang yakin</em>, tanyakan ke guru atau petugas kebersihan.</p>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </div>
 
-    <!-- RIWAYAT -->
-    <section id="riwayat" class="section alt">
-      <div class="wrap">
-        <h2 class="center">Level &amp; Riwayat Scan</h2>
+    <!-- ============ 4. LEVEL & POIN ============ -->
+    <div class="view" data-view="level" hidden>
+      <section class="section">
+        <div class="wrap narrow">
+          <h1 class="page-title center">🏆 Level &amp; Poin</h1>
+          <p class="center muted page-sub">Kumpulkan Eco Points dari setiap scan sampah dan naikkan levelmu.</p>
 
-        <div class="card levels">
-          <div class="levels-head">
-            <h3>Tangga Level</h3>
-            <p class="muted small">Setiap scan sampah yang berhasil dikenali memberi +10 Eco Points.</p>
+          <div class="card achieve">
+            <div id="lvEmoji" class="achieve-emoji" aria-hidden="true">🌰</div>
+            <p class="achieve-kicker">Level kamu</p>
+            <h2 id="lvName" class="achieve-name">Pemula</h2>
+            <p class="achieve-points"><span id="lvPoints">0</span> <span class="muted">Eco Points</span></p>
+            <div id="lvBar" class="hud-bar big" role="progressbar" aria-label="Kemajuan menuju level berikutnya" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <div id="lvFill" class="hud-fill"></div>
+            </div>
+            <p id="lvNext" class="muted small"></p>
+            <p class="small muted">Scan berhasil: <strong id="lvScans">0</strong></p>
           </div>
-          <ol id="levelList" class="level-list"></ol>
-          <div class="center">
-            <button id="btnResetPoints" class="btn btn-ghost btn-sm" type="button">Reset poin &amp; level</button>
-          </div>
-        </div>
-        <div class="grid2 stats">
-          <div class="card stat stat-organik"><span id="countOrganik" class="stat-num">0</span><span>Organik</span></div>
-          <div class="card stat stat-anorganik"><span id="countAnorganik" class="stat-num">0</span><span>Anorganik</span></div>
-        </div>
-        <div class="card">
-          <ul id="historyList" class="history"></ul>
-          <p id="historyEmpty" class="muted center">Belum ada riwayat. Coba scan sampah pertamamu!</p>
-          <div class="center">
-            <button id="btnClearHistory" class="btn btn-ghost btn-sm" type="button" hidden>Hapus riwayat</button>
-          </div>
-        </div>
-        <p class="muted small center">Riwayat, poin, dan level hanya tersimpan di perangkat ini dan tidak dikirim ke mana pun.</p>
-      </div>
-    </section>
 
-    <!-- TENTANG -->
-    <section id="tentang" class="section">
-      <div class="wrap narrow">
-        <h2 class="center">Tentang Proyek</h2>
-        <p>
-          PilahPintar adalah proyek untuk membantu warga sekolah memilah sampah dengan benar.
-          Pendeteksi berjalan langsung di browser memakai model klasifikasi gambar
-          (TensorFlow.js &amp; Teachable Machine), sehingga foto yang kamu ambil tidak diunggah ke server.
-        </p>
-        <p>
-          Sampah organik nantinya diolah menjadi pupuk kompos untuk taman SMAN 3 Blitar,
-          dan sampah anorganik dapat disetorkan ke Bank Sampah sekolah.
-        </p>
-        <p class="muted small">
-          Catatan: AI bisa keliru pada benda yang ambigu atau foto yang kurang jelas.
-          Jika hasil tampak janggal, coba foto ulang dari jarak lebih dekat dan terang.
-        </p>
-      </div>
-    </section>
+          <div class="card levels">
+            <div class="levels-head">
+              <h3>Tangga Level</h3>
+              <p class="muted small">Setiap scan sampah yang berhasil dikenali memberi +10 Eco Points.</p>
+            </div>
+            <ol id="levelList" class="level-list"></ol>
+            <div class="center">
+              <button id="btnResetPoints" class="btn btn-ghost btn-sm" type="button">Reset poin &amp; level</button>
+            </div>
+          </div>
+          <p class="muted small center">Poin dan level hanya tersimpan di perangkat ini dan tidak dikirim ke mana pun.</p>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============ 5. RIWAYAT & GRAFIK ============ -->
+    <div class="view" data-view="riwayat" hidden>
+      <section class="section">
+        <div class="wrap narrow">
+          <h1 class="page-title center">📊 Riwayat &amp; Grafik</h1>
+          <p class="center muted page-sub">Perbandingan sampah organik dan anorganik yang sudah kamu pindai.</p>
+
+          <div class="card chart-card">
+            <div id="chartWrap" class="chart-wrap" hidden>
+              <canvas id="pieChart" role="img" aria-label="Diagram lingkaran perbandingan sampah organik dan anorganik"></canvas>
+            </div>
+            <p id="chartEmpty" class="muted center">Belum ada data untuk grafik. Coba scan sampah pertamamu!</p>
+            <p id="chartSummary" class="center chart-summary"></p>
+          </div>
+
+          <div class="grid2 stats">
+            <div class="card stat stat-organik"><span id="countOrganik" class="stat-num">0</span><span>🌿 Organik</span></div>
+            <div class="card stat stat-anorganik"><span id="countAnorganik" class="stat-num">0</span><span>♻️ Anorganik</span></div>
+          </div>
+
+          <div class="card">
+            <h3>Scan Terakhir</h3>
+            <ul id="historyList" class="history"></ul>
+            <p id="historyEmpty" class="muted center">Belum ada riwayat. Coba scan sampah pertamamu!</p>
+            <div class="center">
+              <button id="btnClearHistory" class="btn btn-ghost btn-sm" type="button" hidden>Hapus riwayat</button>
+            </div>
+          </div>
+          <p class="muted small center">Riwayat dan grafik hanya tersimpan di perangkat ini dan tidak dikirim ke mana pun.</p>
+        </div>
+      </section>
+    </div>
 
   </main>
 
@@ -251,9 +465,10 @@
     </div>
   </div>
 
-  <!-- Library AI (dimuat dari CDN) -->
+  <!-- Library (dimuat dari CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
