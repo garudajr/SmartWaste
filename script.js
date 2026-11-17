@@ -15,7 +15,10 @@ const MAX_HISTORY = 100;
 const HISTORY_KEY = "pilahpintar_riwayat";
 const THEME_KEY = "pilahpintar_tema";
 const POINTS_KEY = "pilahpintar_poin";
-const TOTAL_KEY = "pilahpintar_total";   // jumlah kumulatif Organik/Anorganik (untuk grafik)
+const TOTAL_KEY = "pilahpintar_total";   // jumlah kumulatif per kategori (untuk grafik)
+const PHOTO_KEY = "pilahpintar_foto";    // foto hasil scan (Base64) per kategori
+const MAX_PHOTOS_PER_CAT = 5;            // foto terakhir yang disimpan per kategori
+const THUMB_MAX = 480;                   // sisi terpanjang foto tersimpan (px)
 const POINTS_PER_SCAN = 10;     // poin tiap scan sampah yang berhasil dikenali
 const LEVELUP_DELAY_MS = 1600;  // jeda sebelum pop-up naik level muncul
 
@@ -72,17 +75,30 @@ const INFO = {
     tong: "",
     catatan: ""
   },
-  lain: {
-    ikon: "🔍",
-    judul: "Sampah tidak terdeteksi",
-    penjelasan: "Gambar ini tidak terbaca sebagai sampah (mungkin hanya latar, tangan, atau benda lain).",
+  b3: {
+    ikon: "☣️",
+    judul: "Apa itu sampah B3?",
+    penjelasan: "B3 berarti Bahan Berbahaya dan Beracun. Sampah ini mengandung zat kimia atau logam yang bisa meracuni manusia dan mencemari tanah serta air.",
     langkah: [
-      "Arahkan kamera tepat ke benda sampahnya.",
-      "Jauhkan objek lain dari bingkai gambar.",
-      "Ulangi scan."
+      "Jangan dibuang ke tempat sampah biasa dan jangan dibakar.",
+      "Jangan dibongkar, dipecahkan, atau ditekan. Pegang dengan hati-hati dan cuci tangan sesudahnya.",
+      "Simpan terpisah di wadah tertutup, jauh dari anak kecil dan sumber panas.",
+      "Serahkan ke guru atau petugas kebersihan agar dikumpulkan di tempat penampungan B3."
+    ],
+    tong: "🔴 Tempat sampah: Merah (B3)",
+    catatan: "Contoh: baterai bekas, lampu bohlam rusak, kaleng semprot nyamuk, cairan pembersih kimia, obat kedaluwarsa. Obat kedaluwarsa jangan dibuang ke saluran air; tanyakan cara pembuangannya ke apotek atau puskesmas."
+  },
+  bukan: {
+    ikon: "😄",
+    judul: "Hei, ini Bukan Sampah!",
+    penjelasan: "Yang terlihat di kamera bukan sampah, jadi tidak perlu dibuang. Mungkin itu wajah, tangan, meja, sepatu, atau tas. Jangan sampai kamu atau barang bagusmu masuk tempat sampah ya!",
+    langkah: [
+      "Kalau tadi cuma iseng, tidak apa-apa. Senyum dulu 😊",
+      "Arahkan kamera ke benda sampah yang ingin dipilah.",
+      "Pastikan hanya ada satu benda sampah di dalam bingkai."
     ],
     tong: "",
-    catatan: ""
+    catatan: "Benda yang bukan sampah tidak memberi Eco Points."
   }
 };
 
@@ -94,7 +110,8 @@ const el = {
   btnTheme: $("btnTheme"),
   btnMenu: $("btnMenu"), btnMenuClose: $("btnMenuClose"), sidebar: $("sidebar"), overlay: $("overlay"),
   btnScanGroup: $("btnScanGroup"), scanSub: $("scanSub"), navScan: $("navScan"),
-  sbPoints: $("sbPoints"), sbLevel: $("sbLevel"), gallery: $("gallery"),
+  sbPoints: $("sbPoints"), sbLevel: $("sbLevel"), tabPanel: $("tabPanel"), tabs: $("tabs"),
+  saveBox: $("saveBox"), btnSave: $("btnSave"), saveHint: $("saveHint"), countB3: $("countB3"),
   lvEmoji: $("lvEmoji"), lvName: $("lvName"), lvPoints: $("lvPoints"), lvBar: $("lvBar"),
   lvFill: $("lvFill"), lvNext: $("lvNext"), lvScans: $("lvScans"),
   chartWrap: $("chartWrap"), pieChart: $("pieChart"), chartEmpty: $("chartEmpty"), chartSummary: $("chartSummary"),
@@ -125,7 +142,8 @@ let busy = false;
 let liveTimer = null;
 let points = 0;         // total Eco Points
 let imageId = 0;        // naik tiap ada foto baru (kamera/upload)
-let lastAwardedId = 0;  // foto terakhir yang sudah dapat poin
+let lastSavedId = 0;    // foto terakhir yang sudah disimpan
+let pending = null;     // hasil scan yang bisa disimpan: { hasil, kat, id, source }
 let lastFocus = null;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -135,10 +153,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
    --------------------------------------------------------------------- */
 function kategori(namaKelas) {
   const n = String(namaKelas).toLowerCase();
+  if (n.includes("bukan")) return "bukan";
+  if (n.includes("b3") || n.includes("berbahaya") || n.includes("beracun")) return "b3";
   if (n.includes("anorganik") || n.includes("non-organik") || n.includes("non organik")) return "anorganik";
   if (n.includes("organik")) return "organik";
-  return "lain";
+  return "bukan"; // kelas tak dikenal dianggap bukan sampah
 }
+
+const NAMA_KAT = { organik: "Organik", anorganik: "Anorganik", b3: "B3", bukan: "Bukan Sampah" };
 
 function showNotice(msg) {
   el.notice.textContent = msg;
@@ -196,7 +218,8 @@ function ensureModel() {
 async function classify(source) {
   if (DEMO) {
     await sleep(300);
-    const nama = Math.random() < 0.5 ? "Organik" : "Anorganik";
+    const pilihan = ["Organik", "Anorganik", "B3", "Bukan Sampah"];
+    const nama = pilihan[Math.floor(Math.random() * pilihan.length)];
     return { nama, prob: 0.78 + Math.random() * 0.2 };
   }
   const m = await ensureModel();
@@ -229,6 +252,8 @@ function setLoading(on) {
 }
 
 function hideResult() {
+  pending = null;
+  el.saveBox.hidden = true;
   el.pointsGain.hidden = true;
   el.result.hidden = true;
   el.confBar.style.width = "0";
@@ -294,8 +319,9 @@ function startLive() {
         const top = preds[0];
         const kat = kategori(top.className);
         const pct = Math.round(top.probability * 100);
-        el.liveBadge.className = "live-badge" + (kat !== "lain" && top.probability >= CONFIDENCE_THRESHOLD ? " is-" + kat : "");
-        el.liveBadge.textContent = kat === "lain" ? "Arahkan ke sampah" : top.className + " " + pct + "%";
+        const yakin = top.probability >= CONFIDENCE_THRESHOLD;
+        el.liveBadge.className = "live-badge" + (kat !== "bukan" && yakin ? " is-" + kat : "");
+        el.liveBadge.textContent = kat === "bukan" ? (yakin ? "Bukan sampah 🙂" : "Arahkan ke sampah") : NAMA_KAT[kat] + " " + pct + "%";
       } catch (e) { /* abaikan error sesaat */ }
     }
     if (mode === "camera") liveTimer = setTimeout(tick, 700);
@@ -381,7 +407,7 @@ async function analyze() {
     if (sisa > 0) await sleep(sisa);
 
     renderResult(hasil);
-    handleScore(hasil);
+    prepareSave(hasil, source);
   } catch (err) {
     console.error(err);
     showNotice("Gagal menganalisis gambar. Pastikan MODEL_URL benar dan koneksi internet aktif, lalu coba lagi.");
@@ -413,15 +439,16 @@ function renderResult(hasil) {
   const kat = kategori(hasil.nama);
   const pct = Math.round(hasil.prob * 100);
   let state = kat;
-  if (kat !== "lain" && hasil.prob < CONFIDENCE_THRESHOLD) state = "ragu";
+  if (hasil.prob < CONFIDENCE_THRESHOLD) state = "ragu";
 
-  const ikon = { organik: "✅", anorganik: "♻️", ragu: "🤔", lain: "🔍" };
-  const label = { organik: "ORGANIK", anorganik: "ANORGANIK", ragu: "KURANG YAKIN", lain: "TIDAK TERDETEKSI" };
+  const ikon = { organik: "✅", anorganik: "♻️", b3: "☣️", ragu: "🤔", bukan: "😄" };
+  const label = { organik: "ORGANIK", anorganik: "ANORGANIK", b3: "B3", ragu: "KURANG YAKIN", bukan: "BUKAN SAMPAH" };
   const sub = {
     organik: "Sampah organik",
     anorganik: "Sampah anorganik",
-    ragu: "Dugaan: " + (kat === "lain" ? hasil.nama : kat === "organik" ? "Organik" : "Anorganik"),
-    lain: "Tidak terbaca sebagai sampah"
+    b3: "Sampah berbahaya dan beracun",
+    ragu: "Dugaan: " + NAMA_KAT[kat],
+    bukan: "Hei, ini Bukan Sampah!"
   };
 
   el.resultBanner.className = "result-banner is-" + state;
@@ -462,24 +489,29 @@ function loadHistory() {
   } catch (e) { return []; }
 }
 
+const KAT_SAMPAH = ["organik", "anorganik", "b3"]; // yang masuk riwayat, grafik, dan poin
+
 function loadTotals() {
   try {
     const o = JSON.parse(safeGet(TOTAL_KEY));
     if (o && Number.isFinite(o.organik) && Number.isFinite(o.anorganik)) {
-      return { organik: Math.max(0, o.organik | 0), anorganik: Math.max(0, o.anorganik | 0) };
+      return {
+        organik: Math.max(0, o.organik | 0),
+        anorganik: Math.max(0, o.anorganik | 0),
+        b3: Math.max(0, (o.b3 | 0))
+      };
     }
   } catch (e) { /* lanjut ke cadangan */ }
   // Cadangan (data lama): hitung dari riwayat yang sudah ada
   const data = loadHistory();
-  return {
-    organik: data.filter((d) => d.kat === "organik").length,
-    anorganik: data.filter((d) => d.kat === "anorganik").length
-  };
+  const t = { organik: 0, anorganik: 0, b3: 0 };
+  data.forEach((d) => { if (t[d.kat] !== undefined) t[d.kat]++; });
+  return t;
 }
 
 function saveHistory(hasil) {
   const kat = kategori(hasil.nama);
-  if (kat === "lain" || hasil.prob < CONFIDENCE_THRESHOLD) return; // hanya hasil yang yakin
+  if (!KAT_SAMPAH.includes(kat) || hasil.prob < CONFIDENCE_THRESHOLD) return;
   const totals = loadTotals(); // dibaca sebelum riwayat berubah
   totals[kat] += 1;
   safeSet(TOTAL_KEY, JSON.stringify(totals));
@@ -494,13 +526,14 @@ function renderHistory() {
   const totals = loadTotals();
   el.countOrganik.textContent = totals.organik;
   el.countAnorganik.textContent = totals.anorganik;
-  el.lvScans.textContent = totals.organik + totals.anorganik;
+  el.countB3.textContent = totals.b3;
+  el.lvScans.textContent = totals.organik + totals.anorganik + totals.b3;
   el.historyList.textContent = "";
   data.slice(0, 8).forEach((d) => {
     const li = document.createElement("li");
     const badge = document.createElement("span");
     badge.className = "badge " + d.kat;
-    badge.textContent = d.kat === "organik" ? "Organik" : "Anorganik";
+    badge.textContent = NAMA_KAT[d.kat] || d.kat;
     const info = document.createElement("span");
     info.className = "muted small";
     info.textContent = Math.round(d.prob * 100) + "% · " +
@@ -514,9 +547,9 @@ function renderHistory() {
 }
 
 el.btnClearHistory.addEventListener("click", () => {
-  if (confirm("Hapus semua riwayat scan dan data grafik di perangkat ini?")) {
+  if (confirm("Hapus semua riwayat scan dan data grafik di perangkat ini? (Foto di galeri Contoh Sampah tidak ikut terhapus.)")) {
     safeSet(HISTORY_KEY, "[]");
-    safeSet(TOTAL_KEY, JSON.stringify({ organik: 0, anorganik: 0 }));
+    safeSet(TOTAL_KEY, JSON.stringify({ organik: 0, anorganik: 0, b3: 0 }));
     renderHistory();
   }
 });
@@ -531,9 +564,22 @@ function destroyChart() {
   if (pieChart) { pieChart.destroy(); pieChart = null; }
 }
 
+// Pembulatan persen yang totalnya selalu 100
+function persen(nilai, total) {
+  const mentah = nilai.map((v) => (v / total) * 100);
+  const hasil = mentah.map(Math.floor);
+  let sisa = 100 - hasil.reduce((a, b) => a + b, 0);
+  mentah
+    .map((m, i) => ({ i, f: m - Math.floor(m) }))
+    .sort((a, b) => b.f - a.f)
+    .forEach((x) => { if (sisa > 0) { hasil[x.i]++; sisa--; } });
+  return hasil;
+}
+
 function renderChart() {
   const t = loadTotals();
-  const total = t.organik + t.anorganik;
+  const nilai = [t.organik, t.anorganik, t.b3];
+  const total = nilai.reduce((a, b) => a + b, 0);
 
   if (total === 0) {
     destroyChart();
@@ -544,11 +590,10 @@ function renderChart() {
     return;
   }
 
-  const pOrg = Math.round((t.organik / total) * 100);
-  const pAno = 100 - pOrg;
-  el.chartSummary.textContent = total + " sampah berhasil dipindai · Organik " + pOrg + "% · Anorganik " + pAno + "%";
+  const [pOrg, pAno, pB3] = persen(nilai, total);
+  el.chartSummary.textContent = total + " sampah tersimpan · Organik " + pOrg + "% · Anorganik " + pAno + "% · B3 " + pB3 + "%";
   el.pieChart.setAttribute("aria-label",
-    "Diagram lingkaran: " + t.organik + " organik (" + pOrg + " persen) dan " + t.anorganik + " anorganik (" + pAno + " persen)");
+    "Diagram lingkaran: " + t.organik + " organik (" + pOrg + " persen), " + t.anorganik + " anorganik (" + pAno + " persen), " + t.b3 + " B3 (" + pB3 + " persen)");
 
   if (typeof Chart === "undefined") {
     destroyChart();
@@ -568,10 +613,10 @@ function renderChart() {
   pieChart = new Chart(el.pieChart, {
     type: "pie",
     data: {
-      labels: ["Organik", "Anorganik"],
+      labels: ["Organik", "Anorganik", "B3"],
       datasets: [{
-        data: [t.organik, t.anorganik],
-        backgroundColor: ["#22c55e", "#eab308"],
+        data: nilai,
+        backgroundColor: ["#22c55e", "#eab308", "#ef4444"],
         borderColor: warnaKartu,
         borderWidth: 3
       }]
@@ -595,6 +640,64 @@ function renderChart() {
 }
 
 /* ---------------------------------------------------------------------
+   Foto hasil scan (Base64 di localStorage, 5 terakhir per kategori)
+   Cara ringan untuk prototipe. Kalau nanti ingin ratusan foto, ganti
+   loadPhotos/storePhotos dengan IndexedDB.
+   --------------------------------------------------------------------- */
+const KAT_FOTO = ["organik", "anorganik", "b3", "bukan"];
+
+function loadPhotos() {
+  let o = {};
+  try { o = JSON.parse(safeGet(PHOTO_KEY) || "{}") || {}; } catch (e) { o = {}; }
+  const hasil = {};
+  KAT_FOTO.forEach((k) => { hasil[k] = Array.isArray(o[k]) ? o[k] : []; });
+  return hasil;
+}
+
+function storePhotos(o) {
+  try { localStorage.setItem(PHOTO_KEY, JSON.stringify(o)); return true; }
+  catch (e) { return false; }
+}
+
+/* Perkecil gambar lalu ubah ke teks Base64 (JPEG) */
+function makeThumb(src) {
+  try {
+    const w = src.naturalWidth || src.width;
+    const h = src.naturalHeight || src.height;
+    if (!w || !h) return null;
+    const skala = Math.min(1, THUMB_MAX / Math.max(w, h));
+    const c = document.createElement("canvas");
+    c.width = Math.round(w * skala);
+    c.height = Math.round(h * skala);
+    c.getContext("2d").drawImage(src, 0, 0, c.width, c.height);
+    return c.toDataURL("image/jpeg", 0.7);
+  } catch (e) { return null; }
+}
+
+function savePhoto(kat, img, prob) {
+  const o = loadPhotos();
+  o[kat].unshift({ img, prob, t: Date.now() });
+  o[kat] = o[kat].slice(0, MAX_PHOTOS_PER_CAT);
+  let ok = storePhotos(o);
+  // Memori penuh: buang foto terlama dari kategori yang paling banyak, lalu coba lagi
+  while (!ok) {
+    const kandidat = KAT_FOTO
+      .filter((k) => o[k].length > (k === kat ? 1 : 0))
+      .sort((a, b) => o[b].length - o[a].length);
+    if (!kandidat.length) break;
+    o[kandidat[0]].pop();
+    ok = storePhotos(o);
+  }
+  return ok;
+}
+
+function deletePhoto(kat, t) {
+  const o = loadPhotos();
+  o[kat] = o[kat].filter((f) => f.t !== t);
+  storePhotos(o);
+}
+
+/* ---------------------------------------------------------------------
    Poin & level (Eco Points)
    --------------------------------------------------------------------- */
 function loadPoints() {
@@ -606,10 +709,6 @@ function levelIndex(p) {
   let idx = 0;
   LEVELS.forEach((lv, i) => { if (p >= lv.min) idx = i; });
   return idx;
-}
-
-function isValidScan(hasil) {
-  return kategori(hasil.nama) !== "lain" && hasil.prob >= CONFIDENCE_THRESHOLD;
 }
 
 function renderPoints(animate) {
@@ -675,27 +774,58 @@ function showGain(teks, sukses) {
   el.pointsGain.hidden = false;
 }
 
-/* Dipanggil setelah hasil tampil. Poin hanya untuk hasil yang yakin,
-   dan satu foto hanya dihitung sekali (analisis ulang foto sama = 0 poin). */
-function handleScore(hasil) {
-  if (!isValidScan(hasil)) return;
-  if (imageId === lastAwardedId) {
-    showGain("Foto ini sudah dihitung. Scan sampah lain untuk menambah poin!", false);
-    return;
-  }
-  lastAwardedId = imageId;
-  saveHistory(hasil); // riwayat & grafik ikut hanya untuk foto baru
-  const sebelum = levelIndex(points);
-  points += POINTS_PER_SCAN;
-  safeSet(POINTS_KEY, String(points));
-  const sesudah = levelIndex(points);
-  renderPoints(true);
-  showGain("+" + POINTS_PER_SCAN + " Eco Points 🟢 · Total " + points, true);
-  if (sesudah > sebelum) {
-    // Tahan hasil scan sebentar, baru munculkan pop-up naik level
-    setTimeout(() => openLevelUp(sesudah), LEVELUP_DELAY_MS);
-  }
+/* Dipanggil setelah hasil tampil: munculkan tombol simpan hanya untuk
+   hasil yang yakin. Poin & foto baru tercatat saat tombol ditekan. */
+function prepareSave(hasil, source) {
+  pending = null;
+  el.pointsGain.hidden = true;
+  if (hasil.prob < CONFIDENCE_THRESHOLD) { el.saveBox.hidden = true; return; }
+  pending = { hasil, kat: kategori(hasil.nama), id: imageId, source };
+  updateSaveBox();
 }
+
+function updateSaveBox() {
+  if (!pending) { el.saveBox.hidden = true; return; }
+  const sudah = pending.id === lastSavedId;
+  const poin = pending.kat !== "bukan";
+  el.btnSave.disabled = sudah;
+  el.btnSave.textContent = sudah
+    ? "✓ Sudah disimpan"
+    : poin ? "💾 Simpan & Tambah Poin (+" + POINTS_PER_SCAN + ")" : "💾 Simpan Foto (tanpa poin)";
+  el.saveHint.textContent = "Foto hanya disimpan di perangkat ini (maksimal " + MAX_PHOTOS_PER_CAT +
+    " terakhir per kategori) dan bisa dihapus dari menu Contoh Sampah.";
+  el.saveBox.hidden = false;
+}
+
+function savePending() {
+  const p = pending;
+  if (!p || p.id !== imageId || imageId === lastSavedId) return;
+  lastSavedId = imageId;
+
+  const thumb = makeThumb(p.source);
+  const fotoOk = thumb ? savePhoto(p.kat, thumb, p.hasil.prob) : false;
+  const catatanFoto = fotoOk ? "" : " Foto tidak bisa disimpan (memori browser penuh).";
+
+  if (p.kat === "bukan") {
+    showGain("Foto disimpan di galeri Bukan Sampah 😄 Tidak ada poin untuk benda yang bukan sampah." + catatanFoto, false);
+  } else {
+    saveHistory(p.hasil);
+    const sebelum = levelIndex(points);
+    points += POINTS_PER_SCAN;
+    safeSet(POINTS_KEY, String(points));
+    const sesudah = levelIndex(points);
+    renderPoints(true);
+    showGain("+" + POINTS_PER_SCAN + " Eco Points 🟢 · Total " + points + catatanFoto, true);
+    if (sesudah > sebelum) {
+      // Tahan hasil scan sebentar, baru munculkan pop-up naik level
+      setTimeout(() => openLevelUp(sesudah), LEVELUP_DELAY_MS);
+    }
+  }
+  updateSaveBox();
+  renderContoh();
+}
+
+el.btnSave.addEventListener("click", savePending);
 
 function launchConfetti() {
   el.confetti.textContent = "";
@@ -834,6 +964,7 @@ function showView(name) {
   document.title = TITLES[name] + " · PilahPintar";
   window.scrollTo(0, 0);
   if (name === "riwayat") renderChart();
+  if (name === "scan-contoh") renderContoh();
 
   const judul = document.querySelector('.view[data-view="' + name + '"] h1, .view[data-view="' + name + '"] h2');
   if (judul) { judul.setAttribute("tabindex", "-1"); judul.focus({ preventScroll: true }); }
@@ -858,56 +989,151 @@ document.addEventListener("click", (e) => {
 window.addEventListener("hashchange", () => showView(location.hash.slice(1)));
 
 /* ---------------------------------------------------------------------
-   Galeri contoh sampah
+   Contoh Sampah: tab kategori + galeri foto scan pengguna
    --------------------------------------------------------------------- */
-const CONTOH = [
-  { ikon: "🍌", nama: "Kulit pisang",   kat: "organik" },
-  { ikon: "🍎", nama: "Sisa apel",      kat: "organik" },
-  { ikon: "🍚", nama: "Nasi sisa",      kat: "organik" },
-  { ikon: "🥬", nama: "Sisa sayur",     kat: "organik" },
-  { ikon: "🍂", nama: "Daun kering",    kat: "organik" },
-  { ikon: "🌿", nama: "Ranting kecil",  kat: "organik" },
-  { ikon: "🥚", nama: "Cangkang telur", kat: "organik" },
-  { ikon: "☕", nama: "Ampas kopi",     kat: "organik" },
-  { ikon: "🧴", nama: "Botol plastik",  kat: "anorganik" },
-  { ikon: "🥤", nama: "Gelas plastik",  kat: "anorganik" },
-  { ikon: "🛍️", nama: "Kantong plastik", kat: "anorganik" },
-  { ikon: "📄", nama: "Kertas",         kat: "anorganik" },
-  { ikon: "📦", nama: "Kardus",         kat: "anorganik" },
-  { ikon: "🥫", nama: "Kaleng",         kat: "anorganik" },
-  { ikon: "🍾", nama: "Botol kaca",     kat: "anorganik" },
-  { ikon: "🥡", nama: "Kemasan makanan", kat: "anorganik" }
-];
+const KAT_INFO = {
+  organik: {
+    ikon: "🌿", tag: "Tempat Hijau",
+    penjelasan: "Sampah organik berasal dari makhluk hidup, mudah membusuk, dan bisa diolah menjadi kompos.",
+    contoh: [
+      { ikon: "🍌", nama: "Kulit pisang" }, { ikon: "🍎", nama: "Sisa apel" }, { ikon: "🍚", nama: "Nasi sisa" },
+      { ikon: "🥬", nama: "Sisa sayur" }, { ikon: "🍂", nama: "Daun kering" }, { ikon: "🌿", nama: "Ranting kecil" },
+      { ikon: "🥚", nama: "Cangkang telur" }, { ikon: "☕", nama: "Ampas kopi" }
+    ],
+    kosong: "Kamu belum pernah menemukan sampah organik."
+  },
+  anorganik: {
+    ikon: "♻️", tag: "Tempat Kuning/Biru",
+    penjelasan: "Sampah anorganik sulit terurai oleh alam, tetapi banyak yang bisa didaur ulang lewat Bank Sampah.",
+    contoh: [
+      { ikon: "🧴", nama: "Botol plastik" }, { ikon: "🥤", nama: "Gelas plastik" }, { ikon: "🛍️", nama: "Kantong plastik" },
+      { ikon: "📄", nama: "Kertas" }, { ikon: "📦", nama: "Kardus" }, { ikon: "🥫", nama: "Kaleng" },
+      { ikon: "🍾", nama: "Botol kaca" }, { ikon: "🍬", nama: "Bungkus camilan" }
+    ],
+    kosong: "Kamu belum pernah menemukan sampah anorganik."
+  },
+  b3: {
+    ikon: "☣️", tag: "Tempat Merah",
+    penjelasan: "Sampah B3 mengandung bahan beracun. Jangan dicampur dengan sampah lain, jangan dibakar, dan serahkan ke guru atau petugas untuk dikumpulkan.",
+    contoh: [
+      { ikon: "🔋", nama: "Baterai bekas" }, { ikon: "💡", nama: "Lampu bohlam rusak" }, { ikon: "🦟", nama: "Obat nyamuk semprot" },
+      { ikon: "🧪", nama: "Pembersih lantai kimia" }, { ikon: "💊", nama: "Obat kedaluwarsa" }
+    ],
+    kosong: "Kamu belum pernah menemukan sampah B3."
+  },
+  bukan: {
+    ikon: "🙂", tag: "Tidak perlu dibuang",
+    penjelasan: "Kelas ini membantu AI agar tidak salah menebak. Wajah, tangan, meja, lantai, sepatu, dan tas bukan sampah. Kalau temanmu iseng scan wajahnya sendiri, AI akan menjawab: \"Hei, ini Bukan Sampah!\"",
+    contoh: [
+      { ikon: "🙂", nama: "Wajah manusia" }, { ikon: "✋", nama: "Tangan" }, { ikon: "🪑", nama: "Meja kelas" },
+      { ikon: "⬜", nama: "Lantai kosong" }, { ikon: "👟", nama: "Sepatu" }, { ikon: "🎒", nama: "Tas" }
+    ],
+    kosong: "Belum ada foto bukan-sampah yang disimpan."
+  }
+};
+let activeTab = "organik";
 
-function renderGallery(filter) {
-  el.gallery.textContent = "";
-  CONTOH.filter((c) => filter === "all" || c.kat === filter).forEach((c) => {
-    const li = document.createElement("li");
-    li.className = "gal-item " + c.kat;
-    const ikon = document.createElement("span");
-    ikon.className = "gal-ico";
-    ikon.setAttribute("aria-hidden", "true");
-    ikon.textContent = c.ikon;
-    const nama = document.createElement("strong");
-    nama.textContent = c.nama;
-    const badge = document.createElement("span");
-    badge.className = "badge " + c.kat;
-    badge.textContent = c.kat === "organik" ? "Organik" : "Anorganik";
-    li.append(ikon, nama, badge);
-    el.gallery.appendChild(li);
+function renderContoh() {
+  const foto = loadPhotos();
+  const info = KAT_INFO[activeTab];
+
+  // Tab: penanda aktif + jumlah foto
+  el.tabs.querySelectorAll("[data-tab]").forEach((b) => {
+    const on = b.dataset.tab === activeTab;
+    b.setAttribute("aria-selected", String(on));
+    b.tabIndex = on ? 0 : -1;
+    b.classList.toggle("active", on);
+    const n = foto[b.dataset.tab].length;
+    b.querySelector(".tab-count").textContent = n ? "(" + n + ")" : "";
   });
+  el.tabPanel.className = "tab-panel card cat-" + activeTab;
+  el.tabPanel.setAttribute("aria-labelledby", "tab-" + activeTab);
+  el.tabPanel.textContent = "";
+
+  const judul = document.createElement("h2");
+  judul.textContent = info.ikon + " " + NAMA_KAT[activeTab] + " ";
+  const tag = document.createElement("span");
+  tag.className = "tag";
+  tag.textContent = info.tag;
+  judul.appendChild(tag);
+  const penj = document.createElement("p");
+  penj.className = "muted";
+  penj.textContent = info.penjelasan;
+
+  const h3a = document.createElement("h3");
+  h3a.textContent = "Contoh Umum (ilustrasi)";
+  const grid = document.createElement("ul");
+  grid.className = "gallery";
+  info.contoh.forEach((c) => {
+    const li = document.createElement("li");
+    li.className = "gal-item";
+    const ik = document.createElement("span");
+    ik.className = "gal-ico";
+    ik.setAttribute("aria-hidden", "true");
+    ik.textContent = c.ikon;
+    const nm = document.createElement("strong");
+    nm.textContent = c.nama;
+    li.append(ik, nm);
+    grid.appendChild(li);
+  });
+
+  const h3b = document.createElement("h3");
+  h3b.textContent = "Galeri Scan Kamu (" + foto[activeTab].length + "/" + MAX_PHOTOS_PER_CAT + ")";
+  el.tabPanel.append(judul, penj, h3a, grid, h3b);
+
+  if (foto[activeTab].length === 0) {
+    const kosong = document.createElement("p");
+    kosong.className = "empty-gallery";
+    kosong.textContent = info.kosong;
+    const tip = document.createElement("span");
+    tip.className = "small";
+    tip.textContent = "Scan lalu tekan tombol Simpan, fotonya akan muncul di sini.";
+    kosong.append(document.createElement("br"), tip);
+    el.tabPanel.appendChild(kosong);
+  } else {
+    const album = document.createElement("ul");
+    album.className = "album";
+    foto[activeTab].forEach((f) => {
+      const li = document.createElement("li");
+      li.className = "photo";
+      const img = document.createElement("img");
+      img.src = f.img;
+      img.alt = "Foto scan " + NAMA_KAT[activeTab] + " tanggal " + new Date(f.t).toLocaleDateString("id-ID");
+      img.loading = "lazy";
+      const cap = document.createElement("span");
+      cap.className = "photo-cap";
+      cap.textContent = Math.round(f.prob * 100) + "% · " +
+        new Date(f.t).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "photo-del";
+      del.setAttribute("aria-label", "Hapus foto ini");
+      del.textContent = "✕";
+      del.addEventListener("click", () => {
+        if (confirm("Hapus foto ini dari perangkat?")) { deletePhoto(activeTab, f.t); renderContoh(); }
+      });
+      li.append(img, cap, del);
+      album.appendChild(li);
+    });
+    el.tabPanel.appendChild(album);
+  }
 }
 
-document.querySelectorAll("[data-filter]").forEach((b) => {
-  b.addEventListener("click", () => {
-    document.querySelectorAll("[data-filter]").forEach((x) => {
-      const on = x === b;
-      x.setAttribute("aria-pressed", String(on));
-      x.classList.toggle("btn-primary", on);
-      x.classList.toggle("btn-ghost", !on);
-    });
-    renderGallery(b.dataset.filter);
-  });
+el.tabs.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-tab]");
+  if (!b) return;
+  activeTab = b.dataset.tab;
+  renderContoh();
+  b.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+});
+
+el.tabs.addEventListener("keydown", (e) => {
+  if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+  const urut = KAT_FOTO;
+  const i = urut.indexOf(activeTab);
+  activeTab = urut[(i + (e.key === "ArrowRight" ? 1 : urut.length - 1)) % urut.length];
+  renderContoh();
+  el.tabs.querySelector('[data-tab="' + activeTab + '"]').focus();
 });
 
 /* ---------------------------------------------------------------------
@@ -929,7 +1155,7 @@ window.addEventListener("pagehide", stopCamera);
 initTheme();
 setMode("idle");
 points = loadPoints();
-renderGallery("all");
+renderContoh();
 renderHistory();
 renderPoints(false);
 showView(location.hash.slice(1));

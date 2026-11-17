@@ -123,8 +123,9 @@
           <h2>Kredit Pembuat</h2>
           <div class="card credits">
             <!-- Ganti teks di bawah dengan nama tim/kelas kamu -->
-            <p><strong>Dikembangkan oleh:</strong> [Smart Waste Team]</p>
+            <p><strong>Dikembangkan oleh:</strong> [Nama tim / kelas pembuat]</p>
             <p><strong>Sekolah:</strong> SMAN 3 Blitar</p>
+            <p><strong>Pembimbing:</strong> [Nama guru pembimbing]</p>
             <p class="muted small">
               Dibangun dengan HTML, CSS, JavaScript, TensorFlow.js, Teachable Machine, dan Chart.js.
               Foto yang kamu scan tidak dikirim ke server mana pun.
@@ -143,9 +144,9 @@
       <section class="section">
         <div class="wrap">
           <h1 class="page-title center">📖 Edukasi Sampah</h1>
-          <p class="center muted page-sub">Ensiklopedia mini: kenali dua jenis sampah yang paling sering kita temui.</p>
+          <p class="center muted page-sub">Ensiklopedia mini: kenali jenis-jenis sampah yang paling sering kita temui.</p>
 
-          <div class="grid2">
+          <div class="grid3">
             <article class="card ex ex-organik edu-big">
               <h2>🌿 Sampah Organik <span class="tag">Tempat Hijau</span></h2>
               <p>Berasal dari makhluk hidup (tumbuhan dan hewan), mudah membusuk, dan diurai oleh mikroorganisme menjadi tanah yang subur.</p>
@@ -169,6 +170,18 @@
               <h4>Diolah menjadi</h4>
               <p>Bahan daur ulang lewat Bank Sampah sekolah.</p>
             </article>
+
+            <article class="card ex ex-b3 edu-big">
+              <h2>☣️ Sampah B3 <span class="tag">Tempat Merah</span></h2>
+              <p>B3 berarti Bahan Berbahaya dan Beracun. Mengandung zat kimia atau logam yang bisa meracuni manusia dan mencemari tanah serta air.</p>
+              <h4>Contoh</h4>
+              <ul class="chips">
+                <li>🔋 Baterai bekas</li><li>💡 Lampu bohlam rusak</li><li>🦟 Obat nyamuk semprot</li>
+                <li>🧪 Pembersih lantai kimia</li><li>💊 Obat kedaluwarsa</li>
+              </ul>
+              <h4>Penanganan</h4>
+              <p>Jangan dicampur dengan sampah lain. Serahkan ke guru atau petugas untuk dikumpulkan di tempat penampungan B3.</p>
+            </article>
           </div>
 
           <div class="card compare">
@@ -176,13 +189,13 @@
             <div class="table-scroll">
               <table>
                 <thead>
-                  <tr><th></th><th>🌿 Organik</th><th>♻️ Anorganik</th></tr>
+                  <tr><th></th><th>🌿 Organik</th><th>♻️ Anorganik</th><th>☣️ B3</th></tr>
                 </thead>
                 <tbody>
-                  <tr><th scope="row">Asal</th><td>Makhluk hidup</td><td>Bahan buatan / tambang</td></tr>
-                  <tr><th scope="row">Penguraian</th><td>Cepat (hari hingga bulan)</td><td>Sangat lama (puluhan hingga ribuan tahun)</td></tr>
-                  <tr><th scope="row">Penanganan</th><td>Dikomposkan</td><td>Didaur ulang / disetor ke Bank Sampah</td></tr>
-                  <tr><th scope="row">Tempat sampah</th><td>🟢 Hijau</td><td>🟡 Kuning/Biru</td></tr>
+                  <tr><th scope="row">Asal</th><td>Makhluk hidup</td><td>Bahan buatan / tambang</td><td>Bahan kimia atau logam beracun</td></tr>
+                  <tr><th scope="row">Penguraian</th><td>Cepat (hari hingga bulan)</td><td>Sangat lama (puluhan hingga ribuan tahun)</td><td>Sangat lama dan mencemari</td></tr>
+                  <tr><th scope="row">Penanganan</th><td>Dikomposkan</td><td>Didaur ulang / disetor ke Bank Sampah</td><td>Dikumpulkan terpisah oleh petugas</td></tr>
+                  <tr><th scope="row">Tempat sampah</th><td>🟢 Hijau</td><td>🟡 Kuning/Biru</td><td>🔴 Merah</td></tr>
                 </tbody>
               </table>
             </div>
@@ -283,6 +296,11 @@
               </div>
             </div>
 
+            <div id="saveBox" class="save-box" hidden>
+              <button id="btnSave" class="btn btn-primary btn-lg" type="button">💾 Simpan &amp; Tambah Poin</button>
+              <p id="saveHint" class="muted small"></p>
+            </div>
+
             <p id="pointsGain" class="points-gain" role="status" hidden></p>
 
             <!-- KARTU EDUKASI -->
@@ -316,7 +334,8 @@
                 <li><strong>Buka Mulai Scan.</strong> Kamera menyala otomatis. Izinkan akses kamera jika browser bertanya.</li>
                 <li><strong>Arahkan ke satu sampah.</strong> Dekat, terang, dengan latar polos. Label sementara muncul di pojok layar.</li>
                 <li><strong>Tekan Scan Sekarang.</strong> Gambar dibekukan lalu dianalisis oleh AI.</li>
-                <li><strong>Baca hasilnya.</strong> Hijau berarti Organik, kuning berarti Anorganik, lengkap dengan cara membuangnya.</li>
+                <li><strong>Baca hasilnya.</strong> Hijau Organik, kuning Anorganik, merah B3. Jika yang terbaca bukan sampah, AI akan bilang begitu.</li>
+                <li><strong>Tekan Simpan &amp; Tambah Poin</strong> untuk menyimpan fotonya dan mendapat Eco Points.</li>
               </ol>
             </div>
             <div class="card">
@@ -326,6 +345,7 @@
                 <li><strong>Pilih foto</strong> dari galeri (JPG atau PNG, maksimal 12 MB).</li>
                 <li><strong>Periksa pratinjau,</strong> lalu tekan <em>Analisis Foto</em>.</li>
                 <li><strong>Baca hasilnya</strong> dan ikuti panduan penanganan sampahnya.</li>
+                <li><strong>Tekan Simpan &amp; Tambah Poin</strong> untuk menyimpan foto dan mendapat Eco Points.</li>
               </ol>
             </div>
           </div>
@@ -339,7 +359,7 @@
               <li>Jika hasil <em>kurang yakin</em>, ulangi dari jarak lebih dekat.</li>
             </ul>
             <p class="muted small">
-              Setiap scan yang yakin memberi <strong>+10 Eco Points</strong>. Satu foto hanya dihitung sekali.
+              Eco Points (<strong>+10</strong>) diberikan saat kamu menekan <em>Simpan &amp; Tambah Poin</em> pada hasil yang yakin. Satu foto hanya bisa disimpan sekali, dan benda yang bukan sampah tidak memberi poin.
             </p>
           </div>
 
@@ -353,15 +373,16 @@
       <section class="section">
         <div class="wrap">
           <h1 class="page-title center">🖼️ Contoh Sampah</h1>
-          <p class="center muted page-sub">Galeri benda yang bisa dikenali AI. Ketuk filter untuk melihat per jenis.</p>
+          <p class="center muted page-sub">Pilih kategori untuk melihat penjelasan, contoh umum, dan foto hasil scan-mu sendiri.</p>
 
-          <div class="filter" role="group" aria-label="Filter jenis sampah">
-            <button type="button" class="btn btn-sm btn-primary" data-filter="all" aria-pressed="true">Semua</button>
-            <button type="button" class="btn btn-sm btn-ghost" data-filter="organik" aria-pressed="false">🌿 Organik</button>
-            <button type="button" class="btn btn-sm btn-ghost" data-filter="anorganik" aria-pressed="false">♻️ Anorganik</button>
+          <div id="tabs" class="tabs" role="tablist" aria-label="Kategori sampah">
+            <button type="button" role="tab" class="tab" data-tab="organik" id="tab-organik" aria-controls="tabPanel" aria-selected="true">🌿 Organik <span class="tab-count" data-count="organik"></span></button>
+            <button type="button" role="tab" class="tab" data-tab="anorganik" id="tab-anorganik" aria-controls="tabPanel" aria-selected="false" tabindex="-1">♻️ Anorganik <span class="tab-count" data-count="anorganik"></span></button>
+            <button type="button" role="tab" class="tab" data-tab="b3" id="tab-b3" aria-controls="tabPanel" aria-selected="false" tabindex="-1">☣️ B3 <span class="tab-count" data-count="b3"></span></button>
+            <button type="button" role="tab" class="tab" data-tab="bukan" id="tab-bukan" aria-controls="tabPanel" aria-selected="false" tabindex="-1">🙂 Bukan Sampah <span class="tab-count" data-count="bukan"></span></button>
           </div>
 
-          <ul id="gallery" class="gallery"></ul>
+          <div id="tabPanel" class="tab-panel card" role="tabpanel" aria-labelledby="tab-organik"></div>
 
           <div class="card">
             <h3>⚠️ Benda yang sering membingungkan</h3>
@@ -369,6 +390,7 @@
               <li><strong>Tisu basah kemasan:</strong> mengandung serat plastik, buang sebagai anorganik.</li>
               <li><strong>Kertas basah atau berminyak:</strong> sulit didaur ulang, hasil AI bisa ragu.</li>
               <li><strong>Kemasan campuran</strong> (misalnya bungkus makanan berlapis): pisahkan dulu bagian yang berbeda.</li>
+              <li><strong>Baterai dan lampu:</strong> selalu B3, jangan masuk tempat sampah biasa.</li>
             </ul>
             <p class="muted small">Jika AI menjawab <em>kurang yakin</em>, tanyakan ke guru atau petugas kebersihan.</p>
           </div>
@@ -398,7 +420,7 @@
           <div class="card levels">
             <div class="levels-head">
               <h3>Tangga Level</h3>
-              <p class="muted small">Setiap scan sampah yang berhasil dikenali memberi +10 Eco Points.</p>
+              <p class="muted small">Setiap foto sampah yang kamu simpan memberi +10 Eco Points.</p>
             </div>
             <ol id="levelList" class="level-list"></ol>
             <div class="center">
@@ -415,19 +437,20 @@
       <section class="section">
         <div class="wrap narrow">
           <h1 class="page-title center">📊 Riwayat &amp; Grafik</h1>
-          <p class="center muted page-sub">Perbandingan sampah organik dan anorganik yang sudah kamu pindai.</p>
+          <p class="center muted page-sub">Perbandingan sampah organik, anorganik, dan B3 yang sudah kamu simpan.</p>
 
           <div class="card chart-card">
             <div id="chartWrap" class="chart-wrap" hidden>
-              <canvas id="pieChart" role="img" aria-label="Diagram lingkaran perbandingan sampah organik dan anorganik"></canvas>
+              <canvas id="pieChart" role="img" aria-label="Diagram lingkaran perbandingan sampah organik, anorganik, dan B3"></canvas>
             </div>
             <p id="chartEmpty" class="muted center">Belum ada data untuk grafik. Coba scan sampah pertamamu!</p>
             <p id="chartSummary" class="center chart-summary"></p>
           </div>
 
-          <div class="grid2 stats">
+          <div class="stats3">
             <div class="card stat stat-organik"><span id="countOrganik" class="stat-num">0</span><span>🌿 Organik</span></div>
             <div class="card stat stat-anorganik"><span id="countAnorganik" class="stat-num">0</span><span>♻️ Anorganik</span></div>
+            <div class="card stat stat-b3"><span id="countB3" class="stat-num">0</span><span>☣️ B3</span></div>
           </div>
 
           <div class="card">
@@ -438,7 +461,7 @@
               <button id="btnClearHistory" class="btn btn-ghost btn-sm" type="button" hidden>Hapus riwayat</button>
             </div>
           </div>
-          <p class="muted small center">Riwayat dan grafik hanya tersimpan di perangkat ini dan tidak dikirim ke mana pun.</p>
+          <p class="muted small center">Riwayat, grafik, dan foto hanya tersimpan di perangkat ini dan tidak dikirim ke mana pun.</p>
         </div>
       </section>
     </div>

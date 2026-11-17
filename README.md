@@ -1,6 +1,6 @@
-# PilahPintar – Deteksi Sampah Organik & Anorganik
+# PilahPintar – Deteksi Sampah Organik, Anorganik, B3 & Bukan Sampah
 
-Web statis (HTML + CSS + JavaScript) untuk mendeteksi sampah **Organik** atau **Anorganik**
+Web statis (HTML + CSS + JavaScript) untuk mendeteksi sampah **Organik**, **Anorganik**, atau **B3** (atau mengenali benda yang **Bukan Sampah**)
 lewat kamera atau unggah foto, lengkap dengan kartu edukasi cara penanganannya.
 Model AI berjalan langsung di browser (TensorFlow.js + Teachable Machine), tanpa server.
 
@@ -11,7 +11,7 @@ Ikon ☰ di pojok kiri atas membuka panel yang meluncur dari kiri. Halaman berpi
 |------|-----|
 | 🏠 Profil Website | Latar belakang, visi misi, kredit pembuat |
 | 📖 Edukasi Sampah | Ensiklopedia mini Organik vs Anorganik, tabel perbandingan, 3R |
-| 📷 Scan Sampah ▾ | **Mulai Scan** (langsung menyalakan kamera), **Cara Kerja** (panduan kamera & unggah), **Contoh Sampah** (galeri dengan filter) |
+| 📷 Scan Sampah ▾ | **Mulai Scan** (langsung menyalakan kamera), **Cara Kerja** (panduan kamera & unggah), **Contoh Sampah** (4 tab kategori: penjelasan, contoh umum, dan galeri foto scan-mu sendiri) |
 | 🏆 Level & Poin | Eco Points, level, progress bar, tangga level |
 | 📊 Riwayat & Grafik | Pie chart (Chart.js) Organik vs Anorganik dari `localStorage`, plus scan terakhir |
 
@@ -20,7 +20,8 @@ Mengubah nama pembuat: cari bagian **Kredit Pembuat** di `index.html`. Mengubah 
 ## Fitur
 - Scanner kamera (kamera belakang jadi default di HP, bisa ganti kamera) dengan label langsung saat diarahkan
 - Unggah foto (tombol atau drag & drop) dengan pratinjau sebelum dianalisis
-- Animasi scan singkat lalu hasil besar: hijau = Organik, kuning = Anorganik
+- Animasi scan singkat lalu hasil besar: hijau = Organik, kuning = Anorganik, merah = B3, abu-abu = Bukan Sampah ("Hei, ini Bukan Sampah!")
+- Tombol **Simpan & Tambah Poin** setelah hasil yakin: menyimpan foto (Base64, 5 terakhir per kategori) dan memberi Eco Points
 - Kartu edukasi otomatis: penjelasan + langkah penanganan + warna tempat sampah
 - Ambang keyakinan (70%): hasil ragu diganti tips foto yang lebih baik
 - Riwayat scan dan grafik lingkaran Organik/Anorganik (disimpan di perangkat; riwayat dan grafik hanya bertambah untuk foto baru, sama seperti poin)
@@ -29,9 +30,16 @@ Mengubah nama pembuat: cari bagian **Kredit Pembuat** di `index.html`. Mengubah 
 
 ## Langkah 1 – Latih model di Teachable Machine
 1. Buka <https://teachablemachine.withgoogle.com> > **Image Project** > **Standard image model**.
-2. Buat kelas dengan nama persis: `Organik` dan `Anorganik`.
-   Sangat disarankan menambah kelas ketiga `Bukan Sampah` (foto latar kosong, tangan, lantai, meja)
-   agar model tidak memaksa semua gambar jadi Organik/Anorganik.
+2. Buat **4 kelas** dengan nama persis seperti ini (kode mengenali kata `organik`, `anorganik`, `b3`, dan `bukan`):
+
+   | Kelas | Isi foto |
+   |-------|----------|
+   | `Organik` | sisa makanan, daun, ranting, kulit buah |
+   | `Anorganik` | botol plastik, kaleng, kardus, bungkus camilan |
+   | `B3` | baterai bekas, bohlam rusak, kaleng semprot nyamuk, botol pembersih lantai kimia, obat kedaluwarsa |
+   | `Bukan Sampah` | wajah, tangan, meja kelas, lantai kosong, sepatu, tas (sangat penting agar AI tidak memaksa semua gambar jadi sampah) |
+
+   Hati-hati saat memotret B3: jangan membongkar atau memecahkan benda, dan cuci tangan sesudahnya.
 3. Kumpulkan minimal 100–200 foto per kelas, dengan variasi latar, cahaya, dan sudut.
    Foto langsung di lingkungan sekolah supaya akurat.
 4. Klik **Train Model**, lalu **Export Model** > tab **Tensorflow.js** > **Upload (shareable link)** > **Upload my model**.
@@ -75,9 +83,10 @@ Lalu buka <http://localhost:8000>.
 | 🦸‍♂️ Hero | 500 - 990 | 50x scan |
 | 🌍 Earth Guardian | 1000+ | 100x scan |
 
-- Poin hanya diberikan untuk hasil Organik/Anorganik yang yakin (di atas ambang keyakinan).
-- Satu foto hanya dihitung sekali. Menekan "Analisis" berulang pada foto yang sama tidak menambah poin; harus foto atau scan baru.
+- Poin (+10) diberikan saat tombol **Simpan & Tambah Poin** ditekan, hanya untuk hasil Organik/Anorganik/B3 yang yakin (di atas ambang keyakinan). Benda **Bukan Sampah** boleh disimpan fotonya tetapi tidak memberi poin.
+- Satu foto hanya bisa disimpan sekali. Menekan "Analisis" berulang pada foto yang sama tidak menambah poin, riwayat, atau foto; harus foto atau scan baru.
 - Poin disimpan di browser masing-masing perangkat (localStorage), jadi tidak ada papan peringkat bersama dan poin tidak berpindah antar HP.
+- Foto tersimpan: `MAX_PHOTOS_PER_CAT` (jumlah per kategori) dan `THUMB_MAX` (ukuran foto) di `script.js`. Foto disimpan di `localStorage` (cara ringan, sekitar 20-50 KB per foto). Jika ingin ratusan foto, ganti fungsi `loadPhotos`/`storePhotos` dengan IndexedDB.
 - Mengubah batas level atau poin per scan: `LEVELS` dan `POINTS_PER_SCAN` di bagian atas `script.js`.
 - Di mode demo (belum ada model), poin tetap bertambah supaya animasi naik level bisa dicoba. Tombol **Reset poin & level** ada di bagian Level.
 
@@ -90,4 +99,4 @@ Lalu buka <http://localhost:8000>.
 ## Catatan
 - AI bisa keliru pada benda ambigu (kertas basah, kantong teh, kemasan campuran). Itu sebabnya ada ambang keyakinan dan catatan di kartu edukasi.
 - Tisu basah kemasan mengandung serat plastik, jadi dikategorikan anorganik di kartu edukasi. Ubah di `INFO` jika sekolahmu punya aturan lain.
-- Foto yang dianalisis tidak dikirim ke server mana pun; riwayat hanya tersimpan di browser pengguna.
+- Foto yang dianalisis tidak dikirim ke server mana pun; riwayat dan foto hanya tersimpan di browser pengguna dan bisa dihapus lewat menu Contoh Sampah. Ingat bahwa foto "Bukan Sampah" bisa berisi wajah, jadi jangan bagikan perangkat yang menyimpan foto pribadi.
